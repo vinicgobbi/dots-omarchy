@@ -1,0 +1,19 @@
+{
+  "feeds": [
+    {
+      "name": "Página do Curso",
+      "url": "https://ava.faesa.br/d2l/le/news/rss/20204/course?token=REDACTED",
+      "folder": "FAESA"
+    },
+    {
+      "name": "ENADE",
+      "url": "https://ava.faesa.br/d2l/le/news/rss/89054/course?token=REDACTED",
+      "folder": "FAESA"
+    }
+  ],
+  "maxItems": 200,
+  "retentionItems": 1000,
+  "refreshMinutes": 5,
+  "scrollStep": 54,
+  "panelGap": 5
+}
