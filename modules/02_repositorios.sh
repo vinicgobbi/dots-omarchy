@@ -35,7 +35,7 @@ EOT
 # inteiro roda via sudo. Sem essa liberação, todo módulo que precisa
 # instalar algo da AUR pararia pedindo senha no meio da execução
 # automática. Regra bem restrita (só o binário do pacman, não ALL) e
-# temporária: removida em "Limpeza final" (modules/18_limpeza.sh).
+# temporária: removida em "Limpeza final" (modules/19_limpeza.sh).
 permitir_sudo_pacman_temporario() {
     [[ -f "$SUDOERS_AUR_FILE" ]] && return
 

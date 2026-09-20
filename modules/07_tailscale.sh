@@ -39,7 +39,7 @@ integrar_tailscale_omarchy() {
     criar_webapp_tailscale_admin
 }
 
-# Extraída à parte porque o módulo "limpeza" também chama isto: ele apaga
+# Extraída à parte porque o módulo "webapps" também chama isto: ele apaga
 # todos os webapps do Omarchy (omarchy-webapp-remove-all) e, se este módulo
 # tiver rodado na mesma execução, precisa recriar o atalho perdido.
 criar_webapp_tailscale_admin() {
