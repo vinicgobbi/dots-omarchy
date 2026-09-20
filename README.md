@@ -50,7 +50,7 @@ qualquer sistema que não tenha `ID=omarchy`.
 | 15 | virt_manager | QEMU/KVM + libvirt |
 | 16 | vscode_nautilus | "Abrir com o VSCode" no Nautilus |
 | 17 | dots_omarchy | Aplica `dots/` em `~/.config` (com backup `.bak-post-omarchy`) e instala os plugins |
-| 18 | webapps | Apaga os webapps de fábrica e cria YouTube, WhatsApp, Gmail e Netflix (recria o do Tailscale) |
+| 18 | webapps | Apaga os webapps de fábrica e cria YouTube, WhatsApp, Gmail, Netflix e o admin console do Tailscale |
 | 19 | limpeza | Órfãos, cache e remove o sudo temporário do `yay` |
 
 ## Dots

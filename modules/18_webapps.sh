@@ -8,6 +8,7 @@ WEBAPPS=(
     "WhatsApp|https://web.whatsapp.com|$ICONES_WEBAPP/whatsapp.png"
     "Gmail|https://mail.google.com|$ICONES_WEBAPP/gmail.png"
     "Netflix|https://www.netflix.com|$ICONES_WEBAPP/netflix.png"
+    "Tailscale|https://login.tailscale.com/admin/machines|$ICONES_WEBAPP/tailscale-light.png"
 )
 
 criar_webapps() {
@@ -25,21 +26,9 @@ criar_webapps() {
         fi
     done
 
-    # omarchy-webapp-remove-all não distingue os webapps de fábrica do atalho
-    # que o módulo "tailscale" criou — se ele foi selecionado nesta execução,
-    # recria o atalho perdido.
-    local _i
-    for ((_i = 0; _i < ${#MOD_IDS[@]}; _i++)); do
-        if [[ "${MOD_IDS[_i]}" == "tailscale" && "${MOD_SEL[_i]}" == "1" ]]; then
-            criar_webapp_tailscale_admin
-            info "Atalho de webapp do Tailscale Admin Console recriado."
-            break
-        fi
-    done
-
     sucesso "Webapps configurados."
 }
 
 registrar_modulo "webapps" "Criar webapps" \
-    "Apaga os webapps de fábrica do Omarchy e cria YouTube, WhatsApp, Gmail e Netflix" \
+    "Apaga os webapps de fábrica do Omarchy e cria YouTube, WhatsApp, Gmail, Netflix e o admin console do Tailscale" \
     "criar_webapps"

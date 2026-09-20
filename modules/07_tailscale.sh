@@ -39,9 +39,8 @@ integrar_tailscale_omarchy() {
     criar_webapp_tailscale_admin
 }
 
-# Extraída à parte porque o módulo "webapps" também chama isto: ele apaga
-# todos os webapps do Omarchy (omarchy-webapp-remove-all) e, se este módulo
-# tiver rodado na mesma execução, precisa recriar o atalho perdido.
+# O módulo "webapps" também cria este atalho (o Tailscale está na lista dele),
+# porque o omarchy-webapp-remove-all apaga todos os webapps de uma vez.
 criar_webapp_tailscale_admin() {
     executar_como_usuario "omarchy-webapp-install 'Tailscale' 'https://login.tailscale.com/admin/machines' https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/tailscale-light.png" &>/dev/null \
         || aviso "Não foi possível criar o atalho de webapp do Tailscale Admin Console."
