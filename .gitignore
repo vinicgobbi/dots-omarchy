@@ -1,0 +1,4 @@
+logs/
+
+OVPN/*
+!OVPN/README.md
