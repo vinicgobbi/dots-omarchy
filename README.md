@@ -43,7 +43,7 @@ qualquer sistema que não tenha `ID=omarchy`.
 | 08 | chrome_gcm | `omarchy-install-browser chrome` + Git Credential Manager |
 | 09 | bitwarden | Bitwarden desktop (AUR) |
 | 10 | php_extensoes | `sqlsrv`/`pdo_sqlsrv` |
-| 11 | ambiente_usuario | Zsh, Oh My Zsh (via repo Dotfiles), fnm/Node, atalhos |
+| 11 | ambiente_usuario | Zsh, Oh My Zsh (via repo Dotfiles), Node via mise, atalhos |
 | 12 | rust_tools | rustup, eza, topgrade |
 | 13 | claude_code | Pula se o Omarchy já instalou via mise |
 | 14 | ovpn | Importa os `.ovpn` no NetworkManager |

@@ -21,26 +21,17 @@ configurar_usuario() {
   git-credential-manager configure
   git config --global credential.credentialStore secretservice
 
-  # FNM (download do binário, sem tocar no shell ainda) e o clone+bootstrap
-  # dos dotfiles (Oh My Zsh, plugins, tema, fontes e config do Solaar) não
-  # dependem um do outro: rodam em paralelo em vez de em série.
-  ( curl -fsSL https://fnm.vercel.app/install | bash -s -- --skip-shell ) &
-  pid_fnm=\$!
-  ( rm -rf /tmp/dotfiles && git clone https://github.com/vinicgobbi/Dotfiles.git /tmp/dotfiles && bash /tmp/dotfiles/bootstrap.sh ) &
-  pid_dotfiles=\$!
-  wait \"\$pid_fnm\" \"\$pid_dotfiles\"
+  # Clone+bootstrap dos dotfiles (Oh My Zsh, plugins, tema, fontes e config do
+  # Solaar).
+  rm -rf /tmp/dotfiles && git clone https://github.com/vinicgobbi/Dotfiles.git /tmp/dotfiles && bash /tmp/dotfiles/bootstrap.sh
 
-  # Node LTS via FNM (agora que o binário já foi baixado acima)
-  export PATH=\"\$HOME/.local/share/fnm:\$PATH\"
-  eval \"\$(fnm env --shell zsh)\"
+  # Node via mise, que o Omarchy já usa por padrão (o próprio Omarchy costuma
+  # já ter fixado uma versão no ~/.config/mise/config.toml; só instalamos se não).
+  mise which node &>/dev/null || mise use --global node@lts
 
-  fnm install --lts
-  fnm default \$(fnm current)
-
-  # Injeta a inicialização do fnm explicitamente no .zshrc (precisa rodar
-  # depois do Oh My Zsh, que é quem cria/substitui o ~/.zshrc)
-  echo 'export PATH=\"\$HOME/.local/share/fnm:\$PATH\"' >> ~/.zshrc
-  echo 'eval \"\$(fnm env --shell zsh)\"' >> ~/.zshrc
+  # Ativa o mise no zsh (o Omarchy só ativa no bash). Precisa rodar depois do
+  # Oh My Zsh, que é quem cria/substitui o ~/.zshrc.
+  grep -q 'mise activate zsh' ~/.zshrc || echo 'eval \"\$(mise activate zsh)\"' >> ~/.zshrc
 
   # Diretório de Projetos (XDG e Bookmarks)
   if [[ \"\$LANG\" == pt_* ]]; then
@@ -69,5 +60,5 @@ configurar_usuario() {
 }
 
 registrar_modulo "ambiente_usuario" "Configurar ambiente do usuário" \
-    "Zsh, Oh My Zsh, fnm/Node e dotfiles de shell (o tema visual fica com o Omarchy)" \
+    "Zsh, Oh My Zsh, Node (via mise) e dotfiles de shell (o tema visual fica com o Omarchy)" \
     "configurar_usuario" "pacotes_base"
