@@ -49,9 +49,10 @@ qualquer sistema que não tenha `ID=omarchy`.
 | 14 | ovpn | Importa os `.ovpn` no NetworkManager |
 | 15 | virt_manager | QEMU/KVM + libvirt |
 | 16 | vscode_nautilus | "Abrir com o VSCode" e "Copiar caminho" no Nautilus |
-| 17 | dots_omarchy | Aplica `dots/` em `~/.config` (com backup `.bak-post-omarchy`) e instala os plugins |
+| 17 | dots_omarchy | Aplica `dots/` em `~/.config` (com backup `.bak-post-omarchy`) |
 | 18 | webapps | Apaga os webapps de fábrica e cria YouTube, WhatsApp, Gmail, Netflix, Twitch, GitHub, GLPI e o admin console do Tailscale |
 | 19 | limpeza | Órfãos, cache e remove o sudo temporário do `yay` |
+| 20 | plugins_omarchy | Mostra os riscos e **pergunta** antes de instalar os plugins de terceiros da barra (`omarchy plugin add`) |
 
 ## Dots
 

@@ -30,7 +30,7 @@
           "id": "omarchy.workspaces"
         },
         {
-          "id": "bibek.media"
+          "id": "vinicgobbi.media"
         }
       ],
       "right": [
@@ -38,7 +38,7 @@
           "id": "omarchy.tray"
         },
         {
-          "id": "mghizdavet.rss"
+          "id": "vinicgobbi.clipboard"
         },
         {
           "id": "wian47.removable-drives"
@@ -65,7 +65,7 @@
           "id": "omarchy.monitor"
         },
         {
-          "id": "omarchy.power",
+          "id": "vinicgobbi.battery",
           "showPercentage": false
         },
         {
@@ -77,15 +77,20 @@
     "transparent": true
   },
   "cloneSourceRestores": [
-    "bibek.media"
+    "vinicgobbi.battery"
   ],
   "disabledPlugins": [
-    "omarchy.media"
+    "omarchy.media",
+    "omarchy.power"
   ],
   "idle": {
     "lock": 300,
     "screensaver": 150
   },
-  "plugins": [],
+  "plugins": [
+    {
+      "id": "yendor.portal"
+    }
+  ],
   "version": 1
 }

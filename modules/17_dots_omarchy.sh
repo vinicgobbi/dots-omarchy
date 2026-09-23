@@ -35,22 +35,9 @@ aplicar_dots_omarchy() {
         instalar_dot "$arquivo" "omarchy/$rel"
     done < <(find "$SCRIPT_DIR/dots/omarchy/extensions" -type f -print0)
 
-    instalar_plugins_omarchy
-
     sucesso "Dots do Omarchy aplicados. Recarregue o Hyprland (super+shift+r, ou faça logout/login) para ver as mudanças."
 }
 
-# Cada etapa é best-effort: "omarchy plugin clone" precisa de rede e o
-# omarchy-shell pode não estar rodando (sessão gráfica ainda inativa).
-instalar_plugins_omarchy() {
-    local url
-    for url in "${OMARCHY_PLUGINS[@]}"; do
-        info "Plugin do Omarchy: $url"
-        executar_como_usuario "omarchy plugin clone '$url'" \
-            || aviso "Não foi possível instalar o plugin $url; rode depois: omarchy plugin clone $url"
-    done
-}
-
 registrar_modulo "dots_omarchy" "Aplicar dots do Omarchy" \
-    "Copia a config do Hyprland e do omarchy-shell (com backup do que existia) e instala os plugins da barra" \
+    "Copia a config do Hyprland e do omarchy-shell (com backup do que existia)" \
     "aplicar_dots_omarchy"

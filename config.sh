@@ -23,14 +23,17 @@ FLATPAKS_JOGOS=(
   com.vysp3r.ProtonPlus org.prismlauncher.PrismLauncher
 )
 
-# Plugins do shell do Omarchy (instalados via "omarchy plugin clone <url>").
+# Plugins do shell do Omarchy (instalados via "omarchy plugin add <url>" no
+# módulo 20_plugins_omarchy, só se o usuário confirmar).
 # A posição de cada um na barra vem de dots/omarchy/shell.json.
 OMARCHY_PLUGINS=(
-  https://github.com/BibekBhusal0/omarchy-better-media
-  https://github.com/dstankovd/omarchy-openvpn
-  https://github.com/MariusGhizdavet/omarchy-rss
+  https://github.com/KitsuneSemCalda/Feader-RSS
   https://github.com/jitendradara12/omaconnect
   https://github.com/Wian47/omarchy-removable-drives
+  https://github.com/Yendor86/omarchy-portal
+  https://github.com/vinicgobbi/omarchy-plugin-battery
+  https://github.com/vinicgobbi/omarchy-plugin-clipboard
+  https://github.com/vinicgobbi/omarchy-plugin-media
   https://github.com/vinicgobbi/omarchy-plugin-power
   https://github.com/vinicgobbi/omarchy-plugin-vpn
 )
