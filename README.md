@@ -25,7 +25,8 @@ qualquer sistema que não tenha `ID=omarchy`.
 - `dots/` — configs versionadas, aplicadas por `modules/17_dots_omarchy.sh`
   - `dots/hypr/` — `bindings.lua`, `input.lua`, `looknfeel.lua`, `monitors.lua` (só o que foi
     customizado; o resto fica no default do Omarchy)
-  - `dots/omarchy/` — `shell.json` (layout da barra) e
+  - `dots/omarchy/` — `shell.json` (layout da barra), `branding/screensaver.txt`
+    (screensaver personalizado) e
     `plugins/README.md` (lista dos plugins com link de origem)
 - `OVPN/` — perfis `.ovpn` a importar (não versionados, veja `OVPN/README.md`)
 

@@ -28,6 +28,8 @@ aplicar_dots_omarchy() {
     done
 
     instalar_dot "$SCRIPT_DIR/dots/omarchy/shell.json" "omarchy/shell.json"
+    # Screensaver personalizado (o do Omarchy fica como .bak-post-omarchy).
+    instalar_dot "$SCRIPT_DIR/dots/omarchy/branding/screensaver.txt" "omarchy/branding/screensaver.txt"
     # Extensões (dots/omarchy/extensions/), se houver alguma.
     while IFS= read -r -d '' arquivo; do
         rel="${arquivo#"$SCRIPT_DIR/dots/omarchy/"}"
@@ -39,5 +41,5 @@ aplicar_dots_omarchy() {
 }
 
 registrar_modulo "dots_omarchy" "Aplicar dots do Omarchy" \
-    "Copia a config do Hyprland e do omarchy-shell (com backup do que existia)" \
+    "Copia a config do Hyprland, do omarchy-shell e o screensaver (com backup do que existia)" \
     "aplicar_dots_omarchy"
