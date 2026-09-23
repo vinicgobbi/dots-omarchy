@@ -23,7 +23,7 @@ qualquer sistema que não tenha `ID=omarchy`.
   `yay`, downloads) e `os_detect.sh` (checa `ID=omarchy`)
 - `modules/` — um arquivo por etapa, na ordem numérica de execução
 - `dots/` — configs versionadas, aplicadas por `modules/17_dots_omarchy.sh`
-  - `dots/hypr/` — `bindings.lua`, `input.lua`, `monitors.lua` (só o que foi
+  - `dots/hypr/` — `bindings.lua`, `input.lua`, `looknfeel.lua`, `monitors.lua` (só o que foi
     customizado; o resto fica no default do Omarchy)
   - `dots/omarchy/` — `shell.json` (layout da barra) e
     `plugins/README.md` (lista dos plugins com link de origem)
