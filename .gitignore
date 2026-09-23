@@ -2,3 +2,6 @@ logs/
 
 OVPN/*
 !OVPN/README.md
+
+dots/claude/*
+!dots/claude/README.md
