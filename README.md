@@ -51,7 +51,7 @@ qualquer sistema que não tenha `ID=omarchy`.
 | 13 | claude_code | Pula se o Omarchy já instalou via mise |
 | 14 | ovpn | Importa os `.ovpn` no NetworkManager |
 | 15 | virt_manager | QEMU/KVM + libvirt |
-| 16 | vscode_nautilus | "Abrir com o VSCode" e "Copiar caminho" no Nautilus |
+| 16 | vscode_nautilus | "Abrir com o VSCode", "Copiar caminho" e "Abrir no Terminal" (terminal padrão do Omarchy) no Nautilus |
 | 17 | dots_omarchy | Aplica `dots/` em `~/.config` e o `CLAUDE.md` em `~/.claude`, se houver (com backup `.bak-post-omarchy`) |
 | 18 | webapps | Apaga os webapps de fábrica e cria YouTube, WhatsApp, Gmail, Netflix, Twitch, GitHub, GLPI e o admin console do Tailscale |
 | 19 | limpeza | Órfãos, cache e remove o sudo temporário do `yay` |
