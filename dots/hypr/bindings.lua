@@ -52,3 +52,8 @@ hl.unbind("SUPER + SPACE")
 hl.unbind("SUPER + ALT + SPACE")
 o.bind("SUPER + SPACE", "Apps menu", "omarchy-menu toggle apps")
 o.bind("SUPER + ALT + SPACE", "Omarchy menu", "omarchy-menu toggle")
+
+-- SUPER + L -> Bloquear tela (era Toggle workspace layout, que foi para SUPER + SHIFT + L)
+hl.unbind("SUPER + L")
+o.bind("SUPER + L", "Lock system", "omarchy-system-lock")
+o.bind("SUPER + SHIFT + L", "Toggle workspace layout", "omarchy-hyprland-workspace-layout-toggle")
