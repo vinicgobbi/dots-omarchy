@@ -37,6 +37,11 @@ aplicar_dots_omarchy() {
         instalar_dot "$arquivo" ".config/omarchy/$rel"
     done < <(find "$SCRIPT_DIR/dots/omarchy/extensions" -type f -print0)
 
+    # Solaar (MX Master 3S): config.yaml desvia o botão de gesto e a thumb wheel,
+    # rules.yaml mapeia gestos/roda para comandos do Omarchy via Execute.
+    instalar_dot "$SCRIPT_DIR/dots/solaar/config.yaml" ".config/solaar/config.yaml"
+    instalar_dot "$SCRIPT_DIR/dots/solaar/rules.yaml" ".config/solaar/rules.yaml"
+
     # Memória global do Claude Code: não é versionada (ver dots/claude/README.md),
     # então só é instalada se alguém tiver colocado o arquivo lá.
     if [[ -f "$SCRIPT_DIR/dots/claude/CLAUDE.md" ]]; then
@@ -49,5 +54,5 @@ aplicar_dots_omarchy() {
 }
 
 registrar_modulo "dots_omarchy" "Aplicar dots do Omarchy" \
-    "Copia a config do Hyprland, do omarchy-shell, o screensaver e o CLAUDE.md global, se houver (com backup do que existia)" \
+    "Copia a config do Hyprland, do omarchy-shell, o screensaver, o Solaar e o CLAUDE.md global, se houver (com backup do que existia)" \
     "aplicar_dots_omarchy"

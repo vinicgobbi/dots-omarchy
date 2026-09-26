@@ -28,6 +28,8 @@ qualquer sistema que não tenha `ID=omarchy`.
   - `dots/omarchy/` — `shell.json` (layout da barra), `branding/screensaver.txt`
     (screensaver personalizado) e
     `plugins/README.md` (lista dos plugins com link de origem)
+  - `dots/solaar/` — `config.yaml` (desvio do botão de gesto e da thumb wheel do
+    MX Master 3S) e `rules.yaml` (gestos → mídia/bloqueio, thumb wheel → volume)
   - `dots/claude/` — `CLAUDE.md` global do Claude Code (não versionado, veja
     `dots/claude/README.md`)
 - `OVPN/` — perfis `.ovpn` a importar (não versionados, veja `OVPN/README.md`)
@@ -64,4 +66,4 @@ de destino já existir e for diferente, o original é guardado uma vez como
 `<arquivo>.bak-post-omarchy`.
 
 Para atualizar os dots a partir da máquina, copie de volta os arquivos de
-`~/.config/hypr` e `~/.config/omarchy` para `dots/`.
+`~/.config/hypr`, `~/.config/omarchy` e `~/.config/solaar` para `dots/`.

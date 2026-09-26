@@ -1,0 +1,26 @@
+%YAML 1.3
+---
+- Rule:
+  - Test: [thumb_wheel_up, 2]
+  - Execute: [omarchy-audio-output-volume, '+2']
+- Rule:
+  - Test: [thumb_wheel_down, 2]
+  - Execute: [omarchy-audio-output-volume, '-2']
+...
+---
+- Rule:
+  - MouseGesture: Mouse Gesture Button
+  - Execute: [omarchy-shell, media, playPause]
+- Rule:
+  - MouseGesture: Mouse Up
+  - Execute: [omarchy-audio-output-volume, mute-toggle]
+- Rule:
+  - MouseGesture: Mouse Down
+  - Execute: [omarchy-system-lock]
+- Rule:
+  - MouseGesture: Mouse Right
+  - Execute: [omarchy-shell, media, next]
+- Rule:
+  - MouseGesture: Mouse Left
+  - Execute: [omarchy-shell, media, previous]
+...
