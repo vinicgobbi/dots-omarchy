@@ -10,9 +10,11 @@
           "id": "omarchy.keyboard-layout"
         },
         {
+          "birthYear": 2004,
           "format": "dddd HH:mm",
           "formatAlt": "d MMMM 'W'ww yyyy",
           "id": "omarchy.clock",
+          "lifeExpectancy": 90,
           "verticalFormat": "HH\n—\nmm"
         },
         {
@@ -30,7 +32,8 @@
           "id": "omarchy.workspaces"
         },
         {
-          "id": "vinicgobbi.media"
+          "id": "vinicgobbi.media",
+          "showTime": true
         }
       ],
       "right": [
@@ -38,10 +41,17 @@
           "id": "omarchy.tray"
         },
         {
-          "id": "vinicgobbi.clipboard"
+          "id": "io.github.saiiiiiph.update-center",
+          "checkSchedule": "At startup only"
+        },
+        {
+          "id": "vinicgobbi.monitcall"
         },
         {
           "id": "wian47.removable-drives"
+        },
+        {
+          "id": "vinicgobbi.clipboard"
         },
         {
           "id": "omaconnect"
@@ -74,7 +84,7 @@
       ]
     },
     "position": "top",
-    "transparent": true
+    "transparent": false
   },
   "cloneSourceRestores": [
     "vinicgobbi.battery"

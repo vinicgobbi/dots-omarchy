@@ -2,10 +2,10 @@
 ---
 - Rule:
   - Test: [thumb_wheel_up, 2]
-  - Execute: [omarchy-audio-output-volume, '+2']
+  - Execute: [/home/vinicius/.local/bin/solaar-volume, '+2']
 - Rule:
   - Test: [thumb_wheel_down, 2]
-  - Execute: [omarchy-audio-output-volume, '-2']
+  - Execute: [/home/vinicius/.local/bin/solaar-volume, '-2']
 ...
 ---
 - Rule:

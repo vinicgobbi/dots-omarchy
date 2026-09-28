@@ -1,0 +1,62 @@
+#!/bin/bash
+# Ajuste de volume para o thumb wheel do Solaar.
+# O Execute do Solaar dispara um processo por evento, em paralelo. Ler→somar→gravar
+# em cada um gera corrida (volume "volta para trás"), e uma fila acumula atraso.
+# Aqui cada evento só soma seu delta num contador; um único worker aplica o total
+# pendente de uma vez e repete até zerar. Ao parar de girar, no máximo mais uma
+# aplicação acontece.
+
+[[ ${1:-} =~ ^([+-])([0-9]+)$ ]] || { echo "Uso: solaar-volume <+N|-N>" >&2; exit 1; }
+delta=$((${BASH_REMATCH[1]}${BASH_REMATCH[2]}))
+
+dir="${XDG_RUNTIME_DIR:-/tmp}/solaar-volume"
+mkdir -p "$dir"
+pending_file="$dir/pending"
+worker_file="$dir/worker"
+
+exec 9>"$dir/lock"
+
+# Soma o delta; se já existe worker vivo, ele aplica por nós.
+flock 9
+pending=$(cat "$pending_file" 2>/dev/null)
+echo $((${pending:-0} + delta)) >"$pending_file"
+worker=$(cat "$worker_file" 2>/dev/null)
+if [[ -n $worker ]] && kill -0 "$worker" 2>/dev/null; then
+  exit 0
+fi
+echo $$ >"$worker_file"
+flock -u 9
+
+volume_percent() {
+  pactl get-sink-volume "$sink" | grep -om1 '[0-9]*%' | head -1 | tr -d %
+}
+
+while :; do
+  flock 9
+  pending=$(cat "$pending_file" 2>/dev/null)
+  echo 0 >"$pending_file"
+  if ((${pending:-0} == 0)); then
+    : >"$worker_file"
+    exit 0
+  fi
+  flock -u 9
+
+  sink="$(omarchy-audio-output-sink)"
+  [[ -n $sink ]] || continue
+  current="$(volume_percent)"
+  [[ -n $current ]] || continue
+
+  next=$((current + pending))
+  ((next > 100)) && next=100
+  ((next < 0)) && next=0
+
+  ((pending > 0)) && pactl set-sink-mute "$sink" 0
+  pactl set-sink-volume "$sink" "${next}%"
+
+  if [[ $(pactl get-sink-mute "$sink") == *yes ]] || ((next == 0)); then
+    icon="volume-muted"
+  else
+    icon="volume-high"
+  fi
+  omarchy-osd -i "$icon" -p "$next"
+done

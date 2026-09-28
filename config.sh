@@ -31,9 +31,11 @@ OMARCHY_PLUGINS=(
   https://github.com/jitendradara12/omaconnect
   https://github.com/Wian47/omarchy-removable-drives
   https://github.com/Yendor86/omarchy-portal
+  https://github.com/Saiiiiiph/update-center
   https://github.com/vinicgobbi/omarchy-plugin-battery
   https://github.com/vinicgobbi/omarchy-plugin-clipboard
   https://github.com/vinicgobbi/omarchy-plugin-media
   https://github.com/vinicgobbi/omarchy-plugin-power
   https://github.com/vinicgobbi/omarchy-plugin-vpn
+  https://github.com/vinicgobbi/omarchy-monitcall
 )

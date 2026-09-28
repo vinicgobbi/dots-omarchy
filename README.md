@@ -23,13 +23,19 @@ qualquer sistema que não tenha `ID=omarchy`.
   `yay`, downloads) e `os_detect.sh` (checa `ID=omarchy`)
 - `modules/` — um arquivo por etapa, na ordem numérica de execução
 - `dots/` — configs versionadas, aplicadas por `modules/17_dots_omarchy.sh`
-  - `dots/hypr/` — `bindings.lua`, `input.lua`, `looknfeel.lua`, `monitors.lua` (só o que foi
-    customizado; o resto fica no default do Omarchy)
+  - `dots/hypr/` — `bindings.lua`, `input.lua`, `looknfeel.lua`, `monitors.lua`,
+    `autostart.lua` (sobe o `fullscreen-dnd`) e `hyprland.lua` (jogos Proton em
+    tela cheia sem apagar a tela) — só o que foi customizado; o resto fica no
+    default do Omarchy
   - `dots/omarchy/` — `shell.json` (layout da barra), `branding/screensaver.txt`
     (screensaver personalizado) e
     `plugins/README.md` (lista dos plugins com link de origem)
   - `dots/solaar/` — `config.yaml` (desvio do botão de gesto e da thumb wheel do
-    MX Master 3S) e `rules.yaml` (gestos → mídia/bloqueio, thumb wheel → volume)
+    MX Master 3S) e `rules.yaml` (gestos → mídia/bloqueio, thumb wheel → volume
+    via `solaar-volume`)
+  - `dots/bin/` — scripts instalados em `~/.local/bin`: `fullscreen-dnd` (liga o
+    "Silence Notifications" enquanto houver janela em tela cheia) e
+    `solaar-volume` (volume da thumb wheel sem corrida entre eventos)
   - `dots/claude/` — `CLAUDE.md` global do Claude Code (não versionado, veja
     `dots/claude/README.md`)
 - `OVPN/` — perfis `.ovpn` a importar (não versionados, veja `OVPN/README.md`)
@@ -54,7 +60,7 @@ qualquer sistema que não tenha `ID=omarchy`.
 | 14 | ovpn | Importa os `.ovpn` no NetworkManager |
 | 15 | virt_manager | QEMU/KVM + libvirt |
 | 16 | vscode_nautilus | "Abrir com o VSCode", "Copiar caminho" e "Abrir no Terminal" (terminal padrão do Omarchy) no Nautilus |
-| 17 | dots_omarchy | Aplica `dots/` em `~/.config` e o `CLAUDE.md` em `~/.claude`, se houver (com backup `.bak-post-omarchy`) |
+| 17 | dots_omarchy | Aplica `dots/` em `~/.config`, os scripts em `~/.local/bin` e o `CLAUDE.md` em `~/.claude`, se houver (com backup `.bak-post-omarchy`) |
 | 18 | webapps | Apaga os webapps de fábrica e cria YouTube, WhatsApp, Gmail, Netflix, Twitch, GitHub, GLPI e o admin console do Tailscale |
 | 19 | limpeza | Órfãos, cache e remove o sudo temporário do `yay` |
 | 20 | plugins_omarchy | Mostra os riscos e **pergunta** antes de instalar os plugins de terceiros da barra (`omarchy plugin add`) |
@@ -66,4 +72,5 @@ de destino já existir e for diferente, o original é guardado uma vez como
 `<arquivo>.bak-post-omarchy`.
 
 Para atualizar os dots a partir da máquina, copie de volta os arquivos de
-`~/.config/hypr`, `~/.config/omarchy` e `~/.config/solaar` para `dots/`.
+`~/.config/hypr`, `~/.config/omarchy` e `~/.config/solaar` para `dots/` (e os
+scripts de `~/.local/bin` para `dots/bin/`).

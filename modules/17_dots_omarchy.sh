@@ -3,9 +3,9 @@
 # Copia um arquivo de dots/ para ~/<destino> como o usuário-alvo,
 # guardando o original em <arquivo>.bak-post-omarchy na primeira vez que ele
 # difere do que vamos instalar (para nunca perder customização anterior).
-# Uso: instalar_dot <origem> <destino_relativo_ao_home>
+# Uso: instalar_dot <origem> <destino_relativo_ao_home> [modo]
 instalar_dot() {
-    local origem="$1" destino="$2"
+    local origem="$1" destino="$2" modo="${3:-0644}"
     local alvo
     alvo="$(getent passwd "$USER_NAME" | cut -d: -f6)/$destino"
 
@@ -15,7 +15,7 @@ instalar_dot() {
     fi
 
     executar_como_usuario "mkdir -p '$(dirname "$alvo")'"
-    install -o "$USER_NAME" -g "$(id -gn "$USER_NAME")" -m 0644 "$origem" "$alvo"
+    install -o "$USER_NAME" -g "$(id -gn "$USER_NAME")" -m "$modo" "$origem" "$alvo"
     info "Instalado ~/$destino"
 }
 
@@ -37,10 +37,23 @@ aplicar_dots_omarchy() {
         instalar_dot "$arquivo" ".config/omarchy/$rel"
     done < <(find "$SCRIPT_DIR/dots/omarchy/extensions" -type f -print0)
 
+    # Scripts auxiliares em ~/.local/bin: fullscreen-dnd (chamado pelo
+    # hypr/autostart.lua) e solaar-volume (chamado pelo solaar/rules.yaml).
+    for arquivo in "$SCRIPT_DIR"/dots/bin/*; do
+        instalar_dot "$arquivo" ".local/bin/$(basename "$arquivo")" 0755
+    done
+
     # Solaar (MX Master 3S): config.yaml desvia o botão de gesto e a thumb wheel,
-    # rules.yaml mapeia gestos/roda para comandos do Omarchy via Execute.
+    # rules.yaml mapeia gestos/roda para comandos via Execute. O Execute não
+    # expande ~, então o rules.yaml traz o caminho absoluto de /home/vinicius,
+    # trocado aqui pelo home do usuário-alvo.
     instalar_dot "$SCRIPT_DIR/dots/solaar/config.yaml" ".config/solaar/config.yaml"
-    instalar_dot "$SCRIPT_DIR/dots/solaar/rules.yaml" ".config/solaar/rules.yaml"
+    local home_alvo regras
+    home_alvo="$(getent passwd "$USER_NAME" | cut -d: -f6)"
+    regras="$(mktemp)"
+    sed "s|/home/vinicius/|$home_alvo/|g" "$SCRIPT_DIR/dots/solaar/rules.yaml" > "$regras"
+    instalar_dot "$regras" ".config/solaar/rules.yaml"
+    rm -f "$regras"
 
     # Memória global do Claude Code: não é versionada (ver dots/claude/README.md),
     # então só é instalada se alguém tiver colocado o arquivo lá.
@@ -54,5 +67,5 @@ aplicar_dots_omarchy() {
 }
 
 registrar_modulo "dots_omarchy" "Aplicar dots do Omarchy" \
-    "Copia a config do Hyprland, do omarchy-shell, o screensaver, o Solaar e o CLAUDE.md global, se houver (com backup do que existia)" \
+    "Copia a config do Hyprland, do omarchy-shell, o screensaver, o Solaar, os scripts de ~/.local/bin e o CLAUDE.md global, se houver (com backup do que existia)" \
     "aplicar_dots_omarchy"

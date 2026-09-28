@@ -1,0 +1,32 @@
+#!/bin/bash
+# Ativa o "Silence Notifications" enquanto houver uma janela em tela cheia
+# (fullscreen real, não maximizada) visível em algum monitor.
+# Só desliga o DND se foi este script que ligou — não sobrescreve o modo manual.
+
+we_enabled=0
+
+check() {
+  local active fs
+  active=$(hyprctl monitors -j | jq '[.[].activeWorkspace.id]')
+  fs=$(hyprctl clients -j | jq --argjson a "$active" \
+    '[.[] | select(.fullscreen >= 2 and (.workspace.id as $w | $a | index($w)))] | length')
+
+  if (( fs > 0 )); then
+    if [[ $(omarchy-shell notifications dndState 2>/dev/null) == off ]]; then
+      omarchy-shell notifications setDnd on >/dev/null
+      omarchy-shell -q omarchy.indicators refresh
+      we_enabled=1
+    fi
+  elif (( we_enabled )); then
+    omarchy-shell notifications setDnd off >/dev/null
+    omarchy-shell -q omarchy.indicators refresh
+    we_enabled=0
+  fi
+}
+
+sock="$XDG_RUNTIME_DIR/hypr/$HYPRLAND_INSTANCE_SIGNATURE/.socket2.sock"
+socat -U - UNIX-CONNECT:"$sock" | while IFS= read -r line; do
+  case $line in
+    fullscreen\>\>*|workspace\>\>*|focusedmon\>\>*|closewindow\>\>*|movewindow\>\>*) check ;;
+  esac
+done
