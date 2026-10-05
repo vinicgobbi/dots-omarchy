@@ -9,11 +9,15 @@ instalar_chrome_e_gcm() {
     curl -sSL -o /tmp/gcm.tar.gz "$GCM_URL" &
     pid_gcm=$!
 
-    # omarchy-install-browser instala via yay e ainda configura política/tema
-    # do Chrome — a política grava em /etc/opt/chrome/policies/managed, o que
-    # pode pedir a senha de sudo do usuário-alvo no meio da instalação. Roda
-    # em primeiro plano de propósito, pra não perder esse prompt.
+    # omarchy-install-browser instala via yay e tenta criar a pasta de política
+    # do Chrome com sudo. Sob `su -c` o sudo não consegue pedir a senha
+    # ("conversation failed") e o script segue sem a pasta, então o tema nunca
+    # chega ao Chrome. Como aqui já somos root, criamos a pasta com o próprio
+    # helper do Omarchy e reaplicamos o tema como o usuário.
     executar_como_usuario "omarchy-install-browser chrome"
+    source "${OMARCHY_PATH:-/usr/share/omarchy}/install/helpers/browser-policy.sh"
+    browser_policy_setup_dir /etc/opt/chrome/policies/managed
+    executar_como_usuario "omarchy-theme-set-browser"
     wait "$pid_gcm"
 
     mkdir -p /usr/local/gcm
