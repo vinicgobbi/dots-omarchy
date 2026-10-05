@@ -11,6 +11,7 @@ WEBAPPS=(
     "Tailscale|https://login.tailscale.com/admin/machines|$ICONES_WEBAPP/tailscale-light.png"
     "Twitch|https://www.twitch.tv|$ICONES_WEBAPP/twitch.png"
     "Github|https://github.com|$ICONES_WEBAPP/github-light.png"
+    "Claude|https://claude.ai|$ICONES_WEBAPP/claude-ai.png"
     "GLPI|https://sac.faesa.br|$SCRIPT_DIR/assets/icons/glpi.svg"
 )
 
@@ -33,5 +34,5 @@ criar_webapps() {
 }
 
 registrar_modulo "webapps" "Criar webapps" \
-    "Apaga os webapps de fábrica do Omarchy e cria YouTube, WhatsApp, Gmail, Netflix, Twitch, GitHub, GLPI e o admin console do Tailscale" \
+    "Apaga os webapps de fábrica do Omarchy e cria YouTube, WhatsApp, Gmail, Netflix, Twitch, GitHub, Claude, GLPI e o admin console do Tailscale" \
     "criar_webapps"

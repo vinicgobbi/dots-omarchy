@@ -33,6 +33,8 @@
         },
         {
           "id": "vinicgobbi.media",
+          "showPrevious": true,
+          "showNext": true,
           "showTime": true
         }
       ],
@@ -41,8 +43,11 @@
           "id": "omarchy.tray"
         },
         {
-          "id": "io.github.saiiiiiph.update-center",
-          "checkSchedule": "At startup only"
+          "id": "vinicgobbi.remote-connections"
+        },
+        {
+          "checkSchedule": "At startup only",
+          "id": "io.github.saiiiiiph.update-center"
         },
         {
           "id": "vinicgobbi.monitcall"
@@ -79,12 +84,13 @@
           "showPercentage": false
         },
         {
-          "id": "vinicgobbi.power"
+          "id": "vinicgobbi.power",
+          "confirm": false
         }
       ]
     },
     "position": "top",
-    "transparent": false
+    "transparent": true
   },
   "cloneSourceRestores": [
     "vinicgobbi.battery"
@@ -100,6 +106,9 @@
   "plugins": [
     {
       "id": "yendor.portal"
+    },
+    {
+      "id": "trinity-bytes.lock-keys-osd"
     }
   ],
   "version": 1

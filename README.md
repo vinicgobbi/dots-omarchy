@@ -18,7 +18,7 @@ qualquer sistema que não tenha `ID=omarchy`.
 ## Estrutura
 
 - `setup.sh` — orquestrador (menu, dependências, execução, log)
-- `config.sh` — listas de Flatpaks, launchers de jogos e plugins do shell
+- `config.sh` — listas de Flatpaks, launchers de jogos, plugins do shell e temas
 - `lib/` — `ui.sh` (menu/log/mensagens), `utils.sh` (registro de módulos,
   `yay`, downloads) e `os_detect.sh` (checa `ID=omarchy`)
 - `modules/` — um arquivo por etapa, na ordem numérica de execução
@@ -61,9 +61,10 @@ qualquer sistema que não tenha `ID=omarchy`.
 | 15 | virt_manager | QEMU/KVM + libvirt |
 | 16 | vscode_nautilus | "Abrir com o VSCode", "Copiar caminho" e "Abrir no Terminal" (terminal padrão do Omarchy) no Nautilus |
 | 17 | dots_omarchy | Aplica `dots/` em `~/.config`, os scripts em `~/.local/bin` e o `CLAUDE.md` em `~/.claude`, se houver (com backup `.bak-post-omarchy`) |
-| 18 | webapps | Apaga os webapps de fábrica e cria YouTube, WhatsApp, Gmail, Netflix, Twitch, GitHub, GLPI e o admin console do Tailscale |
+| 18 | webapps | Apaga os webapps de fábrica e cria YouTube, WhatsApp, Gmail, Netflix, Twitch, GitHub, Claude, GLPI e o admin console do Tailscale |
 | 19 | limpeza | Órfãos, cache e remove o sudo temporário do `yay` |
 | 20 | plugins_omarchy | Mostra os riscos e **pergunta** antes de instalar os plugins de terceiros da barra (`omarchy plugin add`) |
+| 21 | temas_omarchy | **Pergunta** antes de instalar os temas extras (`omarchy-theme-install`); o último da lista, `lunar-quest`, fica ativo |
 
 ## Dots
 

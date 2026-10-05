@@ -32,10 +32,20 @@ OMARCHY_PLUGINS=(
   https://github.com/Wian47/omarchy-removable-drives
   https://github.com/Yendor86/omarchy-portal
   https://github.com/Saiiiiiph/update-center
+  https://github.com/trinity-bytes/omarchy-lock-keys-osd
   https://github.com/vinicgobbi/omarchy-plugin-battery
   https://github.com/vinicgobbi/omarchy-plugin-clipboard
   https://github.com/vinicgobbi/omarchy-plugin-media
   https://github.com/vinicgobbi/omarchy-plugin-power
+  https://github.com/vinicgobbi/omarchy-plugin-remote-connections
   https://github.com/vinicgobbi/omarchy-plugin-vpn
   https://github.com/vinicgobbi/omarchy-monitcall
+)
+
+# Temas extras do Omarchy (instalados via "omarchy-theme-install <url>" no
+# módulo 21_temas_omarchy, só se o usuário confirmar). Cada instalação já
+# aplica o tema, então o último da lista é o que fica ativo.
+OMARCHY_TEMAS=(
+  https://github.com/KitsuneSemCalda/omarchy-sword-art-theme
+  https://github.com/vinicgobbi/omarchy-theme-lunar-quest
 )
