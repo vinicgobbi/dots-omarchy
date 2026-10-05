@@ -1,0 +1,11 @@
+[
+  {"nome": "YouTube", "url": "https://www.youtube.com", "icone": "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/youtube.png"},
+  {"nome": "WhatsApp", "url": "https://web.whatsapp.com", "icone": "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/whatsapp.png"},
+  {"nome": "Gmail", "url": "https://mail.google.com", "icone": "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/gmail.png"},
+  {"nome": "Netflix", "url": "https://www.netflix.com", "icone": "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/netflix.png"},
+  {"nome": "Tailscale", "url": "https://login.tailscale.com/admin/machines", "icone": "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/tailscale-light.png"},
+  {"nome": "Twitch", "url": "https://www.twitch.tv", "icone": "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/twitch.png"},
+  {"nome": "Github", "url": "https://github.com", "icone": "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/github-light.png"},
+  {"nome": "Claude", "url": "https://claude.ai", "icone": "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/claude-ai.png"},
+  {"nome": "GLPI", "url": "https://sac.faesa.br", "icone": "assets/icons/glpi.svg"}
+]

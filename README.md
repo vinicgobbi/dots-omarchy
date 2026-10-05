@@ -15,14 +15,32 @@ O script pede o usuário-alvo, mostra um menu com todos os módulos marcados,
 resolve dependências entre eles e registra o log em `logs/`. Recusa rodar em
 qualquer sistema que não tenha `ID=omarchy`.
 
+É escrito em Python 3, só com a biblioteca padrão (o Omarchy já traz o
+Python), e o `setup.sh` só chama o `setup.py`. Opções:
+
+```bash
+sudo ./setup.sh --dry-run                     # mostra o que seria feito, sem alterar nada
+sudo ./setup.sh --modulos dots_omarchy,webapps  # roda só esses (e as dependências), sem menu
+```
+
 ## Estrutura
 
-- `setup.sh` — orquestrador (menu, dependências, execução, log)
-- `config.sh` — listas de Flatpaks, launchers de jogos, plugins do shell e temas
-- `lib/` — `ui.sh` (menu/log/mensagens), `utils.sh` (registro de módulos,
-  `yay`, downloads) e `os_detect.sh` (checa `ID=omarchy`)
-- `modules/` — um arquivo por etapa, na ordem numérica de execução
-- `dots/` — configs versionadas, aplicadas por `modules/17_dots_omarchy.sh`
+- `setup.py` — orquestrador (checa `ID=omarchy`, menu, dependências, execução, log);
+  `setup.sh` é só um atalho para ele
+- `post_omarchy/` — `ui.py` (mensagens/menu), `log.py` (logs em `logs/`),
+  `sistema.py` (comandos como root ou como o usuário-alvo, `pacman`/`yay`/`flatpak`,
+  escrita de arquivos e o `--dry-run`), `modulos.py` (carga e dependências) e
+  `dados.py` (lê `data/`)
+- `modules/` — um arquivo `.py` por etapa, na ordem numérica de execução; cada um
+  define `MODULO = Modulo(id, título, descrição, função, dependências)`
+- `data/` — tudo que é lista fica aqui, em JSON:
+  - `flatpaks.json` — apps (`apps`) e launchers de jogos (`jogos`)
+  - `plugins.json` — plugins da barra (`omarchy plugin add`)
+  - `themes.json` — temas extras; o último da lista fica ativo
+  - `webapps.json` — nome, URL e ícone (URL ou caminho relativo ao projeto)
+  - `packages.json` — pacotes de cada módulo (`pacman`, `aur`, `cargo`…), pelo id do módulo
+  - `dots.json` — o que copiar de `dots/` para o home (origem, destino, modo e regras especiais)
+- `dots/` — configs versionadas, aplicadas por `modules/17_dots_omarchy.py`
   - `dots/hypr/` — `bindings.lua`, `input.lua`, `looknfeel.lua`, `monitors.lua`,
     `autostart.lua` (sobe o `fullscreen-dnd`) e `hyprland.lua` (jogos Proton em
     tela cheia sem apagar a tela) — só o que foi customizado; o resto fica no
@@ -68,9 +86,16 @@ qualquer sistema que não tenha `ID=omarchy`.
 
 ## Dots
 
-`17_dots_omarchy` copia os arquivos de `dots/` para `~/.config`. Se o arquivo
-de destino já existir e for diferente, o original é guardado uma vez como
-`<arquivo>.bak-post-omarchy`.
+`17_dots_omarchy` copia os arquivos de `dots/` para o home seguindo o
+`data/dots.json`. Se o arquivo de destino já existir e for diferente, o original
+é guardado uma vez como `<arquivo>.bak-post-omarchy`.
+
+Cada entrada do `dots.json` tem `origem` (relativa a `dots/`, aceita glob como
+`hypr/*.lua`) e `destino` (relativo ao home; termina em `/` quando a origem é um
+glob). Opcionais: `modo` (padrão `0644`), `trocar_home` (troca `/home/vinicius/`
+pelo home do usuário-alvo) e `opcional` + `aviso_ausente` (pula com aviso se o
+arquivo não existir). Para versionar um dot novo, coloque o arquivo em `dots/`
+e adicione a entrada.
 
 Para atualizar os dots a partir da máquina, copie de volta os arquivos de
 `~/.config/hypr`, `~/.config/omarchy` e `~/.config/solaar` para `dots/` (e os

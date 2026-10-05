@@ -1,0 +1,50 @@
+{
+  "repositorios": {
+    "pacman": ["curl", "gnupg", "jq", "base-devel", "git"]
+  },
+  "pacotes_base": {
+    "pacman": [
+      "flatpak", "zsh", "git", "curl", "jq", "xdg-user-dirs",
+      "docker", "docker-compose", "docker-buildx", "php", "composer", "unixodbc", "bat",
+      "visual-studio-code-bin"
+    ],
+    "aur": ["msodbcsql", "mssql-tools"]
+  },
+  "solaar": {
+    "pacman": ["solaar"],
+    "flatpak_alternativo": "io.github.pwr_solaar.solaar"
+  },
+  "flatpaks": {
+    "pacman": ["spotify"]
+  },
+  "launchers_jogos": {
+    "pacman": ["steam", "heroic-games-launcher-bin"]
+  },
+  "tailscale": {
+    "pacman": ["tailscale"]
+  },
+  "bitwarden": {
+    "aur": ["bitwarden-bin"]
+  },
+  "php_extensoes": {
+    "aur": ["php-sqlsrv", "php-pdo_sqlsrv"]
+  },
+  "rust_tools": {
+    "pacman": ["base-devel"],
+    "cargo": ["eza", "topgrade"]
+  },
+  "ovpn": {
+    "pacman": ["networkmanager-openvpn"]
+  },
+  "virt_manager": {
+    "pacman": ["qemu-desktop", "libvirt", "virt-manager"]
+  },
+  "vscode_nautilus": {
+    "pacman": ["nautilus-python", "python-gobject", "wl-clipboard", "xclip"],
+    "extensoes_git": [
+      "https://github.com/vinicgobbi/vscode_nautilus.git",
+      "https://github.com/vinicgobbi/nautilus-copypath.git",
+      "https://github.com/vinicgobbi/omarchy-nautilus-openinterminal.git"
+    ]
+  }
+}

@@ -7,7 +7,7 @@ com as instruções que valem para todos os projetos):
 cp ~/.claude/CLAUDE.md dots/claude/CLAUDE.md
 ```
 
-O `modules/17_dots_omarchy.sh` instala esse arquivo em `~/.claude/CLAUDE.md`
+O `modules/17_dots_omarchy.py` instala esse arquivo em `~/.claude/CLAUDE.md`
 durante o setup. Se já existir um diferente, o original é guardado uma vez
 como `CLAUDE.md.bak-post-omarchy`. Sem o arquivo aqui, o módulo só pula
 essa etapa.

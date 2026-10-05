@@ -1,0 +1,15 @@
+[
+  {"origem": "hypr/*.lua", "destino": ".config/hypr/"},
+  {"origem": "omarchy/shell.json", "destino": ".config/omarchy/shell.json"},
+  {"origem": "omarchy/branding/screensaver.txt", "destino": ".config/omarchy/branding/screensaver.txt"},
+  {"origem": "omarchy/extensions/**/*", "destino": ".config/omarchy/extensions/"},
+  {"origem": "bin/*", "destino": ".local/bin/", "modo": "0755"},
+  {"origem": "solaar/config.yaml", "destino": ".config/solaar/config.yaml"},
+  {"origem": "solaar/rules.yaml", "destino": ".config/solaar/rules.yaml", "trocar_home": true},
+  {
+    "origem": "claude/CLAUDE.md",
+    "destino": ".claude/CLAUDE.md",
+    "opcional": true,
+    "aviso_ausente": "dots/claude/CLAUDE.md não encontrado; pulando a memória global do Claude Code."
+  }
+]

@@ -5,3 +5,5 @@ OVPN/*
 
 dots/claude/*
 !dots/claude/README.md
+
+__pycache__/
