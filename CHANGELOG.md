@@ -1,3 +1,10 @@
+## v0.1.2 (2026-10-08)
+
+### Fix
+
+- report already-installed plugins as installed instead of failed
+- keep every step inside the TUI with a temporary passwordless sudo
+
 ## v0.1.1 (2026-10-08)
 
 ### Fix
