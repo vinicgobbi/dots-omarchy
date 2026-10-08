@@ -17,7 +17,7 @@ concurrency:
 
 jobs:
   verificar:
-    name: Verificar (vet + build)
+    name: Verificar (vet + testes + build)
     # O commit de bump é feito pelo próprio workflow.
     if: ${{ !startsWith(github.event.head_commit.message, 'bump:') }}
     runs-on: ubuntu-latest
@@ -29,9 +29,10 @@ jobs:
           go-version-file: go.mod
 
       # Antes do bump: código que não compila não ganha tag.
-      - name: Vet e build
+      - name: Vet, testes e build
         run: |
           go vet ./...
+          go test ./...
           go build -o /dev/null .
 
   versao:
