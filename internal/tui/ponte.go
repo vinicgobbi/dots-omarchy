@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"os/exec"
 	"strings"
 	"sync"
 
@@ -57,12 +56,6 @@ func (b *ponte) Confirmar(c ui.Confirmacao) bool {
 	sim := <-resposta
 	b.log.Linha("PERGUNTA", fmt.Sprintf("%s -> %v", c.Pergunta, sim))
 	return sim
-}
-
-func (b *ponte) Exec(cmd *exec.Cmd) error {
-	fim := make(chan error, 1)
-	b.enviar(execMsg{cmd, fim})
-	return <-fim
 }
 
 // escritorLinhas recebe a saída dos comandos, grava no log bruto e manda cada

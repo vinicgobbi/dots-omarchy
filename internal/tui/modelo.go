@@ -7,7 +7,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"os/exec"
 	"strings"
 	"time"
 
@@ -102,14 +101,6 @@ type (
 	confirmarMsg struct {
 		c        ui.Confirmacao
 		resposta chan bool
-	}
-	execMsg struct {
-		cmd *exec.Cmd
-		fim chan error
-	}
-	execFimMsg struct {
-		err error
-		fim chan error
 	}
 )
 
@@ -270,16 +261,6 @@ func (m modelo) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.modal, m.modalSim, m.modalTopo = &msg, false, 0
 		return m, nil
 
-	case execMsg:
-		titulo := m.fila[m.atual].Titulo
-		return m, tea.ExecProcess(comAviso(msg.cmd, titulo), func(err error) tea.Msg {
-			return execFimMsg{err, msg.fim}
-		})
-
-	case execFimMsg:
-		msg.fim <- msg.err
-		return m, nil
-
 	case tea.KeyMsg:
 		return m.tecla(msg)
 	}
@@ -290,18 +271,6 @@ func (m modelo) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, cmd
 	}
 	return m, nil
-}
-
-// comAviso mostra, antes de um comando interativo, o que está acontecendo e
-// por que a TUI sumiu por um momento.
-func comAviso(cmd *exec.Cmd, titulo string) *exec.Cmd {
-	script := `printf '\n\033[1;33m[*] %s\033[0m\n\033[1;30m%s\033[0m\n\n' "$1" "$2"; shift 2; exec "$@"`
-	args := append([]string{"-c", script, "bash", titulo,
-		"Este passo usa o terminal diretamente (pode pedir sua senha). A tela volta sozinha ao terminar."},
-		cmd.Args...)
-	novo := exec.Command("bash", args...)
-	novo.Env = cmd.Env
-	return novo
 }
 
 func (m *modelo) adicionar(l linha) {
@@ -603,6 +572,15 @@ func (m modelo) iniciar() (tea.Model, tea.Cmd) {
 // executar roda os módulos em ordem; o primeiro que falhar interrompe o resto
 // (como o set -e da versão em bash).
 func executar(s *sistema.Sistema, fila []*modulos.Modulo, b *ponte) {
+	defer b.enviar(fimMsg{})
+	restaurar, err := s.LiberarSudo()
+	if err != nil {
+		b.enviar(moduloInicioMsg{0})
+		b.enviar(moduloFimMsg{0, err, 0})
+		return
+	}
+	defer restaurar()
+
 	for n, mod := range fila {
 		b.enviar(moduloInicioMsg{n})
 		passo := fmt.Sprintf("[%d/%d] %s", n+1, len(fila), mod.Titulo)
@@ -620,7 +598,6 @@ func executar(s *sistema.Sistema, fila []*modulos.Modulo, b *ponte) {
 			break
 		}
 	}
-	b.enviar(fimMsg{})
 }
 
 func rodarModulo(s *sistema.Sistema, mod *modulos.Modulo) (err error) {

@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"strings"
 
 	"github.com/vinicgobbi/dots-omarchy/internal/logs"
@@ -25,8 +24,6 @@ type UI interface {
 	// Interativo diz se há alguém no terminal para responder perguntas.
 	Interativo() bool
 	Confirmar(c Confirmacao) bool
-	// Exec roda um comando com o terminal de verdade (ex.: senha do sudo).
-	Exec(cmd *exec.Cmd) error
 	// Isolado diz se os comandos não interativos devem rodar sem terminal de
 	// controle (na TUI, para um prompt inesperado não bagunçar a tela).
 	Isolado() bool
@@ -87,11 +84,6 @@ func (t *Texto) Passo(atual, total int, titulo string) {
 func (t *Texto) Saida() io.Writer { return io.MultiWriter(os.Stdout, t.Log) }
 func (t *Texto) Interativo() bool { return t.interativo }
 func (t *Texto) Isolado() bool    { return false }
-
-func (t *Texto) Exec(cmd *exec.Cmd) error {
-	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
-	return cmd.Run()
-}
 
 func (t *Texto) Banner() {
 	fmt.Printf("%s%s\n==============================================\n", Negrito, Verde)

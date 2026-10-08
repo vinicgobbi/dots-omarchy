@@ -252,8 +252,8 @@ func (m modelo) detalheModulo(i, largura, altura int, compacto bool) string {
 	if len(precisam) > 0 {
 		partes = append(partes, texto.Render(estiloSutil.Render("Necessário para: ")+strings.Join(precisam, ", ")))
 	}
-	if mod.Interativo {
-		partes = append(partes, texto.Render(estiloAviso.Render("⌨ Pode pedir sua senha ou uma confirmação.")))
+	if mod.Confirma {
+		partes = append(partes, texto.Render(estiloAviso.Render("? Pergunta antes de instalar (código de terceiros).")))
 	}
 	partes = append(partes, estiloSutil.Render("id: "+mod.ID))
 	return estiloCaixa.Width(largura - 2).Height(altura).Render(strings.Join(partes, "\n"))
@@ -329,8 +329,8 @@ func (m modelo) viewRevisao() string {
 		}
 		n++
 		item := fmt.Sprintf("%s %s", estiloSutil.Render(fmt.Sprintf("%2d.", n)), mod.Titulo)
-		if mod.Interativo {
-			item += " " + estiloAviso.Render("⌨")
+		if mod.Confirma {
+			item += " " + estiloAviso.Render("?")
 			interativos = true
 		}
 		itens = append(itens, item)
@@ -339,8 +339,8 @@ func (m modelo) viewRevisao() string {
 
 	var rodape []string
 	if interativos {
-		rodape = append(rodape, cortar(estiloAviso.Render("⌨")+estiloSutil.Render(
-			" pode pedir sua senha (usa o terminal direto) ou uma confirmação."), m.largura))
+		rodape = append(rodape, cortar(estiloAviso.Render("?")+estiloSutil.Render(
+			" pergunta antes de instalar código de terceiros. O resto roda sem pedir nada."), m.largura))
 	}
 	for _, nota := range m.notas {
 		rodape = append(rodape, cortar(estiloAviso.Render("! "+nota), m.largura))

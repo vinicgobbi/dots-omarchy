@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"regexp"
@@ -33,11 +34,11 @@ func (f *FalhaComando) Error() string {
 
 // Opts ajusta Rodar.
 type Opts struct {
-	SemCheck   bool // não falha com código diferente de zero
-	Quieto     bool // descarta stdout/stderr (&>/dev/null)
-	Capturar   bool // devolve o stdout em Resultado.Saida
-	Leitura    bool // comando só de consulta: roda mesmo no --dry-run
-	Interativo bool // precisa do terminal (ex.: pode pedir a senha do sudo)
+	SemCheck bool // não falha com código diferente de zero
+	Quieto   bool // descarta stdout/stderr (&>/dev/null)
+	Capturar bool // devolve o stdout em Resultado.Saida
+	Leitura  bool // comando só de consulta: roda mesmo no --dry-run
+	Espelhar bool // mostra a saída e também devolve stdout+stderr em Resultado.Saida
 }
 
 type Resultado struct {
@@ -77,12 +78,7 @@ func (s *Sistema) Rodar(args []string, o Opts) (Resultado, error) {
 		return Resultado{Codigo: -1}, err
 	}
 
-	var res Resultado
-	if o.Interativo && s.UI.Interativo() {
-		res.Codigo = s.rodarInterativo(texto)
-	} else {
-		res = s.rodarCapturado(args, o)
-	}
+	res := s.rodarCapturado(args, o)
 	if err := s.ctx.Err(); err != nil {
 		return res, err
 	}
@@ -102,12 +98,15 @@ func (s *Sistema) rodarCapturado(args []string, o Opts) Resultado {
 		if !o.Quieto {
 			cmd.Stderr = saida
 		}
+	case o.Espelhar:
+		espelho := io.MultiWriter(saida, &captura)
+		cmd.Stdout, cmd.Stderr = espelho, espelho
 	case !o.Quieto:
 		cmd.Stdout, cmd.Stderr = saida, saida
 	}
 	if s.UI.Isolado() {
 		// Sessão própria: sem terminal de controle, um prompt inesperado
-		// (sudo, gum) falha em vez de disputar a tela com a TUI. O cancelamento
+		// falha em vez de disputar a tela com a TUI. O cancelamento
 		// mata o grupo todo (su, bash e o que mais tiver sido aberto).
 		cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
 		cmd.Cancel = func() error { return syscall.Kill(-cmd.Process.Pid, syscall.SIGTERM) }
@@ -118,18 +117,6 @@ func (s *Sistema) rodarCapturado(args []string, o Opts) Resultado {
 		f.Flush()
 	}
 	return Resultado{Codigo: codigoSaida(err), Saida: captura.String()}
-}
-
-// rodarInterativo entrega o terminal ao comando. Com o log bruto ativo, roda
-// dentro do `script` para a transcrição também ir para o log.
-func (s *Sistema) rodarInterativo(texto string) int {
-	args := []string{"bash", "-c", texto}
-	if s.Log.BrutoIniciado() {
-		args = []string{"script", "-qefa", s.Log.CaminhoBruto, "-c", texto}
-	}
-	cmd := exec.Command(args[0], args[1:]...)
-	cmd.Env = append(os.Environ(), "SHELL=/bin/bash")
-	return codigoSaida(s.UI.Exec(cmd))
 }
 
 func codigoSaida(err error) int {

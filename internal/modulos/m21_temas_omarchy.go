@@ -8,11 +8,11 @@ import (
 )
 
 var temasOmarchy = &Modulo{
-	ID:         "temas_omarchy",
-	Titulo:     "Instalar temas extras",
-	Descricao:  "Pergunta antes de instalar os temas listados em data/themes.json (o último fica ativo)",
-	Executar:   instalarTemasOmarchy,
-	Interativo: true,
+	ID:        "temas_omarchy",
+	Titulo:    "Instalar temas extras",
+	Descricao: "Pergunta antes de instalar os temas listados em data/themes.json (o último fica ativo)",
+	Executar:  instalarTemasOmarchy,
+	Confirma:  true,
 }
 
 // instalarTemasOmarchy: temas extras vêm do GitHub de cada autor e podem

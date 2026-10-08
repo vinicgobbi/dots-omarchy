@@ -131,6 +131,19 @@ func rodar() int {
 	if os.Geteuid() != 0 && !o.dryRun {
 		return falhar("Execute como root (sudo ./setup.sh), ou use --dry-run para só simular.")
 	}
+
+	// A regra temporária de sudo (sistema.LiberarSudo) nunca pode sobrar: sai
+	// na saída normal, em SIGTERM/SIGHUP (terminal fechado) e, se uma execução
+	// anterior morreu com SIGKILL, aqui no início.
+	sistema.RemoverSudo()
+	defer sistema.RemoverSudo()
+	sinais := make(chan os.Signal, 1)
+	signal.Notify(sinais, syscall.SIGTERM, syscall.SIGHUP)
+	go func() {
+		<-sinais
+		sistema.RemoverSudo()
+		os.Exit(143)
+	}()
 	raiz, err := acharRaiz(o.raiz)
 	if err != nil {
 		return falhar(err.Error())
@@ -275,6 +288,12 @@ func rodarTexto(o opcoes, raiz, nomeSistema string, d *dados.Dados, lista []*mod
 	ctx, parar := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer parar()
 	s := sistema.Novo(ctx, raiz, *conta, d, o.dryRun, t, log)
+	restaurar, err := s.LiberarSudo()
+	if err != nil {
+		t.Erro(err.Error())
+		return 1
+	}
+	defer restaurar()
 
 	inicio := time.Now()
 	var executados []string

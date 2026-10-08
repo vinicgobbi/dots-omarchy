@@ -3,11 +3,10 @@ package modulos
 import "github.com/vinicgobbi/dots-omarchy/internal/sistema"
 
 var atualizacao = &Modulo{
-	ID:         "atualizacao",
-	Titulo:     "Atualizar sistema",
-	Descricao:  "Roda o omarchy-update (snapshot, keyring, migrations e upgrade completo)",
-	Executar:   atualizarSistema,
-	Interativo: true,
+	ID:        "atualizacao",
+	Titulo:    "Atualizar sistema",
+	Descricao: "Roda o omarchy-update (snapshot, keyring, migrations e upgrade completo)",
+	Executar:  atualizarSistema,
 }
 
 func atualizarSistema(s *sistema.Sistema) error {
@@ -18,15 +17,16 @@ func atualizarSistema(s *sistema.Sistema) error {
 	// tudo isso.
 	//
 	// Ele eleva privilégio internamente via "sudo pacman ..." e espera rodar
-	// como o usuário logado, então roda como o usuário-alvo e com o terminal
-	// (pode pedir a senha de sudo dele no meio). Também grava um log fixo em
+	// como o usuário logado, então roda como o usuário-alvo (o sudo não pede
+	// senha: ver sistema.LiberarSudo); com -y não pergunta nada. Também grava
+	// um log fixo em
 	// /tmp/omarchy-update.log: se esse arquivo ficou de uma execução anterior
 	// com outro dono, o fs.protected_regular do kernel barra até o root de
 	// reabri-lo — por isso removemos antes (apagar o root sempre pode).
 	if err := s.Remover("/tmp/omarchy-update.log"); err != nil {
 		return err
 	}
-	if _, err := s.ComoUsuario("omarchy-update -y", sistema.Opts{Interativo: true}); err != nil {
+	if _, err := s.ComoUsuario("omarchy-update -y", sistema.Opts{}); err != nil {
 		return err
 	}
 	s.UI.Sucesso("Sistema atualizado.")

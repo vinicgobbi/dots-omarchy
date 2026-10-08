@@ -2,7 +2,6 @@ package modulos
 
 import (
 	"errors"
-	"fmt"
 	"os"
 	"strings"
 
@@ -12,15 +11,14 @@ import (
 // Chave GPG oficial do Chaotic-AUR (aur.chaotic.cx) — repo binário que serve
 // pacotes pré-compilados do AUR, evitando compilar tudo na mão.
 const (
-	chaoticAURKey  = "3056513887B78AEB"
-	sudoersAURFile = "/etc/sudoers.d/99-post-omarchy-aur"
-	pacmanConf     = "/etc/pacman.conf"
+	chaoticAURKey = "3056513887B78AEB"
+	pacmanConf    = "/etc/pacman.conf"
 )
 
 var repositorios = &Modulo{
 	ID:        "repositorios",
 	Titulo:    "Configurar repositórios",
-	Descricao: "Habilita o Chaotic-AUR e libera o yay para instalar pacotes da AUR",
+	Descricao: "Habilita o Chaotic-AUR (pacotes da AUR pré-compilados) para o yay",
 	Executar:  configurarRepositorios,
 }
 
@@ -63,32 +61,6 @@ func configurarChaoticAUR(s *sistema.Sistema) error {
 	return nil
 }
 
-// permitirSudoPacmanTemporario: o yay (e o makepkg por baixo) recusa rodar
-// como root, mas o setup roda via sudo. Sem essa liberação, todo módulo que
-// instala algo da AUR pararia pedindo senha no meio. Regra restrita (só o
-// pacman, não ALL) e temporária: removida em "Limpeza final".
-func permitirSudoPacmanTemporario(s *sistema.Sistema) error {
-	if _, err := os.Stat(sudoersAURFile); err == nil {
-		return nil
-	}
-
-	s.UI.Info(fmt.Sprintf("Liberando sudo sem senha para o pacman (usuário %s) — necessário para o yay "+
-		"instalar pacotes da AUR sem interação; revertido ao final em 'Limpeza final'.", s.Usuario()))
-	if err := s.Escrever(sudoersAURFile, s.Usuario()+" ALL=(ALL) NOPASSWD: /usr/bin/pacman\n",
-		sistema.Escrita{Modo: 0o440}); err != nil {
-		return err
-	}
-	res, err := s.Rodar([]string{"visudo", "-cf", sudoersAURFile}, sistema.Opts{SemCheck: true})
-	if err != nil {
-		return err
-	}
-	if res.Codigo != 0 {
-		s.Remover(sudoersAURFile)
-		return errors.New("falha ao validar a regra temporária de sudo para o pacman")
-	}
-	return nil
-}
-
 func configurarRepositorios(s *sistema.Sistema) error {
 	s.UI.Info("Configurando repositórios (Chaotic-AUR + yay)...")
 
@@ -100,9 +72,6 @@ func configurarRepositorios(s *sistema.Sistema) error {
 		return err
 	}
 	if err := configurarChaoticAUR(s); err != nil {
-		return err
-	}
-	if err := permitirSudoPacmanTemporario(s); err != nil {
 		return err
 	}
 	if !sistema.ComandoExiste("yay") {

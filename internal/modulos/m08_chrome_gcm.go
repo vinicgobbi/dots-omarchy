@@ -17,11 +17,10 @@ const (
 )
 
 var chromeGCM = &Modulo{
-	ID:         "chrome_gcm",
-	Titulo:     "Chrome + Git Credential Manager",
-	Descricao:  "Instala o Google Chrome (integrado ao tema do Omarchy) e o Git Credential Manager",
-	Executar:   instalarChromeEGCM,
-	Interativo: true,
+	ID:        "chrome_gcm",
+	Titulo:    "Chrome + Git Credential Manager",
+	Descricao: "Instala o Google Chrome (integrado ao tema do Omarchy) e o Git Credential Manager",
+	Executar:  instalarChromeEGCM,
 }
 
 // urlGCM devolve o asset .tar.gz linux-x64 (sem os símbolos) da última release.
@@ -61,20 +60,13 @@ func instalarChromeEGCM(s *sistema.Sistema) error {
 	download := make(chan error, 1)
 	go func() { download <- s.Run("curl", "-sSL", "-o", gcmTar, url) }()
 
-	// omarchy-install-browser instala via yay e tenta criar a pasta de política
-	// do Chrome com sudo. Sob `su -c` o sudo pode não conseguir pedir a senha
-	// ("conversation failed") e o script segue sem a pasta, então o tema nunca
-	// chega ao Chrome. Como aqui já somos root, criamos a pasta com o próprio
-	// helper do Omarchy e reaplicamos o tema como o usuário.
-	_, errChrome := s.ComoUsuario("omarchy-install-browser chrome", sistema.Opts{Interativo: true})
+	// omarchy-install-browser instala via yay e usa sudo para criar a pasta de
+	// política do Chrome (/etc/opt/chrome/policies/managed) e gravar a cor do
+	// tema. Sob `su -c` não há terminal para o sudo pedir senha, o que deixava
+	// o Chrome sem o tema; com a regra temporária de sistema.LiberarSudo o sudo
+	// não pede nada e o script faz tudo sozinho.
+	errChrome := s.Usr("omarchy-install-browser chrome")
 	if err := errors.Join(errChrome, <-download); err != nil {
-		return err
-	}
-	if err := s.Run("bash", "-c", `source "${OMARCHY_PATH:-/usr/share/omarchy}/install/helpers/browser-policy.sh" `+
-		`&& browser_policy_setup_dir /etc/opt/chrome/policies/managed`); err != nil {
-		return err
-	}
-	if err := s.Usr("omarchy-theme-set-browser"); err != nil {
 		return err
 	}
 

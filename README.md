@@ -20,15 +20,24 @@ Abre uma interface no terminal (TUI) que guia por etapas:
    dependências junto; desmarcar uma dependência ainda em uso é bloqueado com
    o motivo;
 3. **Revisão** — usuário, modo (real ou dry-run), log e a lista final; os
-   módulos marcados com ⌨ podem pedir senha ou confirmação;
+   módulos marcados com `?` perguntam antes de instalar código de terceiros;
 4. **Execução** — barra de progresso, status de cada módulo e a saída dos
-   comandos ao vivo (com rolagem). Passos que podem pedir a senha do sudo
-   (`omarchy-update`, Chrome, bootstrap dos Dotfiles) recebem o terminal
-   direto e a TUI volta sozinha ao fim. Plugins e temas de terceiros pedem
-   confirmação numa janela com os riscos. `ctrl+c` duas vezes aborta;
+   comandos ao vivo (com rolagem), tudo dentro da interface. Plugins e temas
+   de terceiros pedem confirmação numa janela com os riscos. `ctrl+c` duas
+   vezes aborta;
 5. **Resumo** — o que rodou, quanto tempo levou, avisos e onde estão os logs.
 
-Recusa rodar em qualquer sistema que não tenha `ID=omarchy`. Cada execução
+Recusa rodar em qualquer sistema que não tenha `ID=omarchy`.
+
+**Sudo sem senha temporário:** os scripts do Omarchy (`omarchy-update`,
+`omarchy-install-browser`…) e o `yay` chamam `sudo` sozinhos e, rodando como o
+usuário-alvo via `su -c`, não têm terminal para pedir a senha. Por isso, só
+durante a execução, o setup cria `/etc/sudoers.d/99-post-omarchy` com
+`NOPASSWD: ALL` para o usuário-alvo (que já autenticou no `sudo ./setup.sh`).
+A regra é removida ao fim, em falha, em abort, em SIGTERM/SIGHUP e, se uma
+execução anterior tiver sido morta com SIGKILL, no início da próxima. Enquanto
+ela existe, qualquer script rodando como esse usuário tem sudo sem senha,
+inclusive os de terceiros (Dotfiles, rustup, plugins). Cada execução
 grava em `logs/` um log limpo (mensagens) e um `.raw.log` com a saída
 completa de todos os comandos.
 
@@ -121,7 +130,7 @@ mensagem; `cz check` valida). A configuração fica em `.cz.toml`. Para instalar
 | # | Módulo | O que faz |
 |---|---|---|
 | 01 | atualizacao | `omarchy-update -y` (snapshot, keyring, migrations, upgrade) |
-| 02 | repositorios | Chaotic-AUR + sudo temporário do pacman para o `yay` (mirror do Omarchy é mantido) |
+| 02 | repositorios | Chaotic-AUR (mirror do Omarchy é mantido) |
 | 03 | pacotes_base | Docker, PHP/composer, unixODBC, VSCode (pacote do `[omarchy]`), MS SQL tools |
 | 04 | solaar | Solaar + regras UDEV |
 | 05 | flatpaks | Spotify nativo + lista de Flatpaks |
@@ -138,7 +147,7 @@ mensagem; `cz check` valida). A configuração fica em `.cz.toml`. Para instalar
 | 16 | vscode_nautilus | "Abrir com o VSCode", "Copiar caminho" e "Abrir no Terminal" (terminal padrão do Omarchy) no Nautilus |
 | 17 | dots_omarchy | Aplica `dots/` em `~/.config`, os scripts em `~/.local/bin` e o `CLAUDE.md` em `~/.claude`, se houver (com backup `.bak-post-omarchy`) |
 | 18 | webapps | Apaga os webapps de fábrica e cria YouTube, WhatsApp, Gmail, Netflix, Twitch, GitHub, Claude, GLPI e o admin console do Tailscale |
-| 19 | limpeza | Órfãos, cache e remove o sudo temporário do `yay` |
+| 19 | limpeza | Órfãos, cache do pacman e `/tmp` |
 | 20 | plugins_omarchy | Mostra os riscos e **pergunta** antes de instalar os plugins de terceiros da barra (`omarchy plugin add`) |
 | 21 | temas_omarchy | **Pergunta** antes de instalar os temas extras (`omarchy-theme-install`); o último da lista, `lunar-quest`, fica ativo |
 

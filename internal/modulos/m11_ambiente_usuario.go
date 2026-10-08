@@ -19,12 +19,11 @@ var solaarDesktop = []string{
 }
 
 var ambienteUsuario = &Modulo{
-	ID:         "ambiente_usuario",
-	Titulo:     "Configurar ambiente do usuário",
-	Descricao:  "Zsh, Oh My Zsh, Node (via mise) e dotfiles de shell (o tema visual fica com o Omarchy)",
-	Executar:   configurarUsuario,
-	Deps:       []string{"pacotes_base"},
-	Interativo: true,
+	ID:        "ambiente_usuario",
+	Titulo:    "Configurar ambiente do usuário",
+	Descricao: "Zsh, Oh My Zsh, Node (via mise) e dotfiles de shell (o tema visual fica com o Omarchy)",
+	Executar:  configurarUsuario,
+	Deps:      []string{"pacotes_base"},
 }
 
 // passoUsuario: passos de ambiente do usuário são best-effort: avisa e segue.
@@ -77,10 +76,9 @@ func configurarUsuario(s *sistema.Sistema) error {
 		{"git-credential-manager configure", "configurar o Git Credential Manager", sistema.Opts{}},
 		{"git config --global credential.credentialStore secretservice", "definir o credentialStore do Git", sistema.Opts{}},
 		// Clone+bootstrap dos dotfiles (Oh My Zsh, plugins, tema, fontes e
-		// config do Solaar). Script de terceiro que pode perguntar algo: roda
-		// com o terminal.
+		// config do Solaar).
 		{"rm -rf /tmp/dotfiles && git clone " + dotfilesRepo + " /tmp/dotfiles && bash /tmp/dotfiles/bootstrap.sh",
-			"aplicar os Dotfiles", sistema.Opts{Interativo: true}},
+			"aplicar os Dotfiles", sistema.Opts{}},
 		// Node via mise, que o Omarchy já usa por padrão (o próprio Omarchy
 		// costuma já ter fixado uma versão no ~/.config/mise/config.toml; só
 		// instalamos se não).

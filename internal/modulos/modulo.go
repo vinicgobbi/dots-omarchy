@@ -9,15 +9,15 @@ import (
 )
 
 // Modulo é uma etapa do setup. Deps são ids de outros módulos que precisam
-// rodar antes. Interativo marca módulos que podem pedir algo no terminal
-// (senha do sudo, confirmação), para a tela de confirmação avisar.
+// rodar antes. Confirma marca módulos que perguntam antes de instalar algo
+// (código de terceiros), para a revisão avisar.
 type Modulo struct {
-	ID         string
-	Titulo     string
-	Descricao  string
-	Executar   func(s *sistema.Sistema) error
-	Deps       []string
-	Interativo bool
+	ID        string
+	Titulo    string
+	Descricao string
+	Executar  func(s *sistema.Sistema) error
+	Deps      []string
+	Confirma  bool
 }
 
 // Todos devolve os módulos na ordem de execução.
