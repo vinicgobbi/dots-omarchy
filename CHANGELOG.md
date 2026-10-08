@@ -1,3 +1,9 @@
+## v0.2.0 (2026-10-08)
+
+### Feat
+
+- add nowbar plugin and drop update-center from the plugin list
+
 ## v0.1.2 (2026-10-08)
 
 ### Fix
