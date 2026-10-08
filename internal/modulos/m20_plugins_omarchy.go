@@ -2,17 +2,18 @@ package modulos
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/vinicgobbi/dots-omarchy/internal/sistema"
 	"github.com/vinicgobbi/dots-omarchy/internal/ui"
 )
 
 var pluginsOmarchy = &Modulo{
-	ID:         "plugins_omarchy",
-	Titulo:     "Instalar plugins de terceiros",
-	Descricao:  "Mostra os riscos e pergunta antes de instalar os plugins da barra listados em data/plugins.json",
-	Executar:   instalarPluginsOmarchy,
-	Interativo: true,
+	ID:        "plugins_omarchy",
+	Titulo:    "Instalar plugins de terceiros",
+	Descricao: "Mostra os riscos e pergunta antes de instalar os plugins da barra listados em data/plugins.json",
+	Executar:  instalarPluginsOmarchy,
+	Confirma:  true,
 }
 
 var riscosPlugins = []string{
@@ -58,15 +59,20 @@ func instalarPluginsOmarchy(s *sistema.Sistema) error {
 	}
 
 	// --yes porque a confirmação já foi feita acima (e o su não tem o gum
-	// interativo do omarchy). Cada plugin é best-effort: precisa de rede e
-	// falha se já estiver instalado.
+	// interativo do omarchy). Cada plugin é best-effort: precisa de rede. Um
+	// plugin já instalado faz o "omarchy plugin add" recusar ("plugin id ...
+	// is already used"), o que numa reexecução é o esperado, não uma falha.
 	for _, url := range plugins {
 		s.UI.Info("Plugin do Omarchy: " + url)
-		ok, err := s.Tentar(sistema.Juntar("omarchy", "plugin", "add", url, "--yes"), sistema.Opts{})
-		if err != nil {
+		res, err := s.ComoUsuario(sistema.Juntar("omarchy", "plugin", "add", url, "--yes"),
+			sistema.Opts{SemCheck: true, Espelhar: true})
+		switch {
+		case err != nil:
 			return err
-		}
-		if !ok {
+		case res.Codigo == 0:
+		case strings.Contains(res.Saida, "is already used by"):
+			s.UI.Info("Já instalado: " + url)
+		default:
 			s.UI.Aviso(fmt.Sprintf("Não foi possível instalar o plugin %s; rode depois: omarchy plugin add %s", url, url))
 		}
 	}
