@@ -3,7 +3,6 @@
   "https://github.com/jitendradara12/omaconnect",
   "https://github.com/Wian47/omarchy-removable-drives",
   "https://github.com/Yendor86/omarchy-portal",
-  "https://github.com/Saiiiiiph/update-center",
   "https://github.com/trinity-bytes/omarchy-lock-keys-osd",
   "https://github.com/vinicgobbi/omarchy-plugin-battery",
   "https://github.com/vinicgobbi/omarchy-plugin-clipboard",
@@ -11,5 +10,6 @@
   "https://github.com/vinicgobbi/omarchy-plugin-power",
   "https://github.com/vinicgobbi/omarchy-plugin-remote-connections",
   "https://github.com/vinicgobbi/omarchy-plugin-vpn",
-  "https://github.com/vinicgobbi/omarchy-monitcall"
+  "https://github.com/vinicgobbi/omarchy-monitcall",
+  "https://github.com/vinicgobbi/omarchy-plugin-nowbar"
 ]
