@@ -1,3 +1,9 @@
+## v0.1.1 (2026-10-08)
+
+### Fix
+
+- track internal/logs (gitignore only ignores the root logs/ folder)
+
 ## v0.1.0 (2026-10-08)
 
 ### Feat
