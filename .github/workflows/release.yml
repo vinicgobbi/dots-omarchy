@@ -16,10 +16,27 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  versao:
-    name: Versão (commitizen)
+  verificar:
+    name: Verificar (vet + build)
     # O commit de bump é feito pelo próprio workflow.
     if: ${{ !startsWith(github.event.head_commit.message, 'bump:') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+
+      # Antes do bump: código que não compila não ganha tag.
+      - name: Vet e build
+        run: |
+          go vet ./...
+          go build -o /dev/null .
+
+  versao:
+    name: Versão (commitizen)
+    needs: verificar
     runs-on: ubuntu-latest
     permissions:
       contents: write
