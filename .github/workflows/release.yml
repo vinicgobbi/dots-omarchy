@@ -1,0 +1,145 @@
+name: release
+
+# Só a main gera versão: o commitizen decide o bump pelos commits
+# convencionais, o binário é compilado na tag nova e publicado no release
+# (binário solto + zip com a estrutura de pastas). O artefato da action é só a
+# ponte entre os jobs e é apagado no fim; fica apenas o release.
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  versao:
+    name: Versão (commitizen)
+    # O commit de bump é feito pelo próprio workflow.
+    if: ${{ !startsWith(github.event.head_commit.message, 'bump:') }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      lancar: ${{ steps.bump.outputs.lancar }}
+      tag: ${{ steps.bump.outputs.tag }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.13"
+
+      - name: Instalar o commitizen
+        run: pip install commitizen==4.19.2
+
+      - name: Bump, changelog e tag
+        id: bump
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          set +e
+          cz bump --yes
+          codigo=$?
+          set -e
+          # 3 = nenhum commit novo; 21 = só commits que não sobem versão
+          # (docs, chore, ci...). Nos dois casos não há release.
+          if [ "$codigo" -eq 3 ] || [ "$codigo" -eq 21 ]; then
+            echo "Nada para lançar."
+            echo "lancar=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          [ "$codigo" -eq 0 ] || exit "$codigo"
+
+          tag="v$(cz version --project)"
+          git push origin HEAD:main "refs/tags/$tag"
+          echo "lancar=true" >> "$GITHUB_OUTPUT"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+  build:
+    name: Compilar
+    needs: versao
+    if: needs.versao.outputs.lancar == 'true'
+    runs-on: ubuntu-latest
+    outputs:
+      artefato: ${{ steps.upload.outputs.artifact-id }}
+    env:
+      TAG: ${{ needs.versao.outputs.tag }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.versao.outputs.tag }}
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Compilar
+        env:
+          CGO_ENABLED: "0"
+          GOOS: linux
+          GOARCH: amd64
+        run: go build -trimpath -ldflags "-s -w -X main.versao=$TAG" -o post-omarchy .
+
+      - name: Empacotar
+        run: |
+          pasta="post-omarchy-$TAG"
+          mkdir -p "dist/$pasta"
+          cp -r post-omarchy setup.sh README.md data dots assets OVPN "dist/$pasta/"
+          chmod +x "dist/$pasta/post-omarchy" "dist/$pasta/setup.sh"
+          (cd dist && zip -qr "$pasta-linux-amd64.zip" "$pasta" && rm -rf "$pasta")
+          cp post-omarchy "dist/post-omarchy-linux-amd64"
+          ls -la dist
+
+      - name: Enviar artefato
+        id: upload
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: post-omarchy
+          path: dist/
+          if-no-files-found: error
+          retention-days: 1
+
+  release:
+    name: Publicar release
+    needs: [versao, build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: write
+    env:
+      TAG: ${{ needs.versao.outputs.tag }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.versao.outputs.tag }}
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: post-omarchy
+          path: dist
+
+      - name: Notas da versão (do CHANGELOG.md)
+        run: |
+          awk -v tag="$TAG" '/^## / { if (dentro) exit; if ($2 == tag) { dentro = 1; next } } dentro' \
+            CHANGELOG.md > notas.md
+          cat notas.md
+
+      - name: Criar release
+        run: |
+          gh release create "$TAG" dist/* --title "$TAG" --notes-file notas.md --verify-tag
+
+      - name: Apagar o artefato da action
+        env:
+          ARTEFATO: ${{ needs.build.outputs.artefato }}
+        run: gh api -X DELETE "repos/$GITHUB_REPOSITORY/actions/artifacts/$ARTEFATO"

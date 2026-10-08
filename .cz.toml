@@ -1,0 +1,11 @@
+[tool.commitizen]
+name = "cz_conventional_commits"
+version_provider = "commitizen"
+version = "0.0.0"
+version_scheme = "semver2"
+tag_format = "v$version"
+# Enquanto for 0.x, quebra de compatibilidade sobe o minor, não o major.
+major_version_zero = true
+update_changelog_on_bump = true
+changelog_incremental = true
+bump_message = "bump: v$current_version → v$new_version [skip ci]"
