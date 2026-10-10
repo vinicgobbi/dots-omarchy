@@ -4,9 +4,6 @@
     "layout": {
       "center": [
         {
-          "id": "omarchy.indicators"
-        },
-        {
           "id": "omarchy.keyboard-layout"
         },
         {
@@ -16,9 +13,6 @@
           "id": "omarchy.clock",
           "lifeExpectancy": 90,
           "verticalFormat": "HH\n—\nmm"
-        },
-        {
-          "id": "omarchy.weather"
         },
         {
           "id": "omarchy.system-update"
@@ -32,10 +26,16 @@
           "id": "omarchy.workspaces"
         },
         {
-          "id": "vinicgobbi.media",
+          "id": "omarchy.media",
           "showPrevious": true,
           "showNext": true,
           "showTime": true
+        },
+        {
+          "id": "vinicgobbi.nowbar",
+          "updateInterval": 30,
+          "showCount": false,
+          "maxWidth": 180
         }
       ],
       "right": [
@@ -44,10 +44,6 @@
         },
         {
           "id": "vinicgobbi.remote-connections"
-        },
-        {
-          "checkSchedule": "At startup only",
-          "id": "io.github.saiiiiiph.update-center"
         },
         {
           "id": "vinicgobbi.monitcall"

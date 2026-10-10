@@ -57,3 +57,9 @@ o.bind("SUPER + ALT + SPACE", "Omarchy menu", "omarchy-menu toggle")
 hl.unbind("SUPER + L")
 o.bind("SUPER + L", "Lock system", "omarchy-system-lock")
 o.bind("SUPER + SHIFT + L", "Toggle workspace layout", "omarchy-hyprland-workspace-layout-toggle")
+
+-- >>> vinicgobbi.nowbar weather
+-- Added by the Now Bar; undo with its "Restore" button (or: nowbar-weather-widget restore).
+hl.unbind("SUPER + CTRL + ALT + W")
+o.bind("SUPER + CTRL + ALT + W", "Weather", "omarchy-shell nowbar weather")
+-- <<< vinicgobbi.nowbar weather
