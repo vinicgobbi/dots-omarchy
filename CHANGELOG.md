@@ -1,3 +1,9 @@
+## v0.3.0 (2026-10-10)
+
+### Feat
+
+- sync dots with current config
+
 ## v0.2.0 (2026-10-08)
 
 ### Feat
