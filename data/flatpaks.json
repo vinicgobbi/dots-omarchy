@@ -20,7 +20,11 @@
     "org.telegram.desktop",
     "org.videolan.VLC",
     "me.iepure.devtoolbox",
-    "com.rtosta.zapzap"
+    "com.rtosta.zapzap",
+    "be.alexandervanhee.gradia",
+    "org.gnome.Snapshot",
+    "org.gnome.Weather",
+    "net.blip.Blip"
   ],
   "jogos": [
     "com.vysp3r.ProtonPlus",

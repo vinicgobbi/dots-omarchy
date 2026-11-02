@@ -2,8 +2,17 @@
   "repositorios": {
     "pacman": ["curl", "gnupg", "jq", "base-devel", "git"]
   },
+  "ferramentas": {
+    "pacman": [
+      "git", "curl", "jq", "bat", "github-cli", "tea", "nmap",
+      "python-pipx", "ffmpeg", "bashtop", "fuse2"
+    ]
+  },
   "shell": {
-    "pacman": ["zsh", "git", "curl", "bat"]
+    "pacman": ["zsh", "git", "curl"]
+  },
+  "firefox_thunderbird": {
+    "pacman": ["firefox", "thunderbird"]
   },
   "bitwarden": {
     "aur": ["bitwarden-bin"]
@@ -27,16 +36,26 @@
   "vscode": {
     "pacman": ["visual-studio-code-bin"]
   },
+  "go": {
+    "pacman": ["go"]
+  },
   "php_sqlserver": {
     "pacman": ["php", "composer", "unixodbc"],
     "aur": ["msodbcsql", "mssql-tools", "php-sqlsrv", "php-pdo_sqlsrv"]
   },
   "rust": {
-    "pacman": ["base-devel", "curl"],
-    "cargo": ["eza", "topgrade"]
+    "pacman": ["base-devel", "cmake", "pkgconf", "openssl", "curl"],
+    "cargo": ["eza", "topgrade", "cargo-update"]
+  },
+  "ruby": {
+    "pacman": ["ruby", "rubygems", "base-devel"],
+    "gem": ["bundler", "jekyll"]
   },
   "tailscale": {
     "pacman": ["tailscale"]
+  },
+  "firewall": {
+    "pacman": ["ufw", "gufw"]
   },
   "ovpn": {
     "pacman": ["networkmanager-openvpn"]

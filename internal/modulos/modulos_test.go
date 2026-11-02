@@ -82,7 +82,7 @@ func TestDependenciasRodamAntes(t *testing.T) {
 // O shell troca o ~/.zshrc, e a limpeza precisa vir depois de tudo.
 func TestOrdemDeExecucao(t *testing.T) {
 	todos := Todos()
-	for _, id := range []string{"node"} {
+	for _, id := range []string{"node", "ruby"} {
 		if indice(todos, "shell") > indice(todos, id) {
 			t.Errorf("shell precisa rodar antes de %s", id)
 		}
@@ -162,6 +162,7 @@ func TestScriptsSaoShellValido(t *testing.T) {
 	scripts := map[string]string{
 		"autostart do Solaar": scriptAutostartSolaar,
 		"extensões Nautilus":  scriptExtensoesNautilus(),
+		"ruby":                scriptRuby([]string{"bundler", "jekyll"}),
 	}
 	for nome, script := range scripts {
 		cmd := exec.Command("bash", "-n")

@@ -38,15 +38,15 @@ func Todos() []*Modulo {
 	return []*Modulo{
 		// Sistema
 		atualizacao, repositorios,
-		// Terminal. O shell vem antes dos módulos que mexem no ~/.zshrc (node):
-		// o instalador do Oh My Zsh troca o arquivo.
-		shell,
+		// Terminal. O shell vem antes dos módulos que mexem no ~/.zshrc (node,
+		// ruby): o instalador do Oh My Zsh troca o arquivo.
+		ferramentas, shell,
 		// Aplicativos
-		chrome, bitwarden, flatpaks, launchersJogos, solaar,
+		firefoxThunderbird, chrome, bitwarden, flatpaks, launchersJogos, solaar,
 		// Desenvolvimento
-		gitGCM, docker, vscode, node, phpSQLServer, rust, claudeCode,
+		gitGCM, docker, vscode, golang, node, phpSQLServer, rust, ruby, claudeCode, deployDev,
 		// Rede e virtualização
-		tailscale, ovpn, virtManager,
+		tailscale, firewall, ovpn, virtManager,
 		// Omarchy e aparência. Plugins e temas ficam por último: são código de
 		// terceiros e perguntam antes.
 		nautilus, dotsOmarchy, webapps, pluginsOmarchy, temasOmarchy,
