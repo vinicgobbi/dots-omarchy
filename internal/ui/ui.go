@@ -48,7 +48,7 @@ const (
 	NC       = "\033[0m"
 )
 
-// Texto é a interface em texto corrido, como a versão em Python.
+// Texto é a interface em texto corrido.
 type Texto struct {
 	Log        *logs.Log
 	interativo bool
@@ -87,7 +87,7 @@ func (t *Texto) Isolado() bool    { return false }
 
 func (t *Texto) Banner() {
 	fmt.Printf("%s%s\n==============================================\n", Negrito, Verde)
-	fmt.Printf("   POST-INSTALL SETUP\n==============================================\n%s\n", NC)
+	fmt.Printf("   POST-OMARCHY\n==============================================\n%s\n", NC)
 }
 
 // Pergunta lê uma linha do terminal.

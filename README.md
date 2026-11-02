@@ -2,8 +2,7 @@
 
 Pós-instalação exclusiva do [Omarchy](https://omarchy.org/) (Arch + Hyprland):
 pacotes, apps, integrações nativas do Omarchy e os dots (Hyprland e
-omarchy-shell). Para outras distros (Fedora, RHEL, Debian/Ubuntu, Arch puro),
-use o projeto `post_install`.
+omarchy-shell). Para o Ubuntu com GNOME, use o projeto `post-install`.
 
 ## Uso
 

@@ -105,8 +105,8 @@ func detectarSistema() (string, error) {
 		nome = "desconhecido"
 	}
 	if release["ID"] != "omarchy" {
-		return nome, fmt.Errorf("Sistema não suportado: %s. Este script é exclusivo do Omarchy (ID=omarchy). "+
-			"Para outras distros, use o projeto post_install.", nome)
+		return nome, fmt.Errorf("sistema não suportado: %s; este programa é exclusivo do Omarchy (ID=omarchy) "+
+			"(para o Ubuntu com GNOME, use o projeto post-install)", nome)
 	}
 	return nome, nil
 }
@@ -222,7 +222,7 @@ func rodarTUI(cfg tui.Config) int {
 }
 
 // rodarTexto é o fluxo sem TUI: sem terminal interativo (ou com --sem-tui),
-// roda todos os módulos ou os de --modulos, como a versão em Python fazia.
+// roda todos os módulos ou os de --modulos.
 func rodarTexto(o opcoes, raiz, nomeSistema string, d *dados.Dados, lista []*modulos.Modulo,
 	selecao []bool, conta *sistema.Conta, log *logs.Log) int {
 	interativo := terminal(os.Stdin)
