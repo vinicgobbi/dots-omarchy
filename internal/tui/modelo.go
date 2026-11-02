@@ -1,6 +1,6 @@
-// Package tui é a interface interativa do setup: escolha do usuário-alvo,
-// checklist de módulos com dependências, revisão, execução com progresso e
-// saída ao vivo, e o resumo final.
+// Package tui é a interface interativa do setup: escolha do usuário-alvo e do
+// tema, checklist de módulos com dependências, revisão, execução com progresso
+// e saída ao vivo, e o resumo final.
 package tui
 
 import (
@@ -32,32 +32,15 @@ type Config struct {
 	Selecao     []bool // pré-seleção; nil marca tudo
 	PularMenu   bool   // a seleção veio de --modulos
 	Conta       *sistema.Conta
+	FalhaRapida bool   // --fail-fast
 	Trabalho    string // diretório temporário da execução
 }
 
-type Estado int
-
-const (
-	Pendente Estado = iota
-	Rodando
-	Concluido
-	Falhou
-	NaoExecutado
-)
-
-type ResumoModulo struct {
-	Titulo  string
-	Estado  Estado
-	Duracao time.Duration
-	Erro    error
-}
-
+// Resultado é o que aconteceu na sessão, para o main.
 type Resultado struct {
 	Iniciado bool
 	Abortado bool
-	Falha    error
-	Modulos  []ResumoModulo
-	Avisos   []string
+	Modulos  []modulos.Resultado
 	Duracao  time.Duration
 }
 
@@ -94,9 +77,8 @@ type (
 	linhaMsg        linha
 	moduloInicioMsg struct{ n int }
 	moduloFimMsg    struct {
-		n       int
-		err     error
-		duracao time.Duration
+		n int
+		r modulos.Resultado
 	}
 	fimMsg       struct{}
 	confirmarMsg struct {
@@ -131,9 +113,7 @@ type modelo struct {
 
 	// Execução
 	fila         []*modulos.Modulo
-	estados      []Estado
-	duracoes     []time.Duration
-	erros        []error
+	resultados   []modulos.Resultado
 	atual        int
 	inicioModulo time.Time
 	linhas       []linha
@@ -147,7 +127,6 @@ type modelo struct {
 	pedirAbortar bool
 	abortado     bool
 	terminou     bool
-	avisos       []string
 	cancelar     context.CancelFunc
 }
 
@@ -188,7 +167,6 @@ func novoModelo(cfg Config, b *ponte) modelo {
 			m.cursorConta = i
 		}
 	}
-
 	if cfg.Conta != nil {
 		m.conta, m.contaDaFlag = *cfg.Conta, true
 		m.tela = m.telaAposUsuario()
@@ -218,34 +196,26 @@ func (m modelo) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case linhaMsg:
 		m.adicionar(linha(msg))
-		if msg.tipo == linhaAviso && m.atual < len(m.fila) {
-			m.avisos = append(m.avisos, m.fila[m.atual].Titulo+": "+msg.texto)
-		}
 		return m, nil
 
 	case moduloInicioMsg:
 		m.atual, m.inicioModulo = msg.n, time.Now()
-		m.estados[msg.n] = Rodando
+		m.resultados[msg.n].Estado = modulos.Rodando
 		m.adicionar(linha{linhaPasso, fmt.Sprintf("[%d/%d] %s", msg.n+1, len(m.fila), m.fila[msg.n].Titulo)})
 		return m, nil
 
 	case moduloFimMsg:
-		m.duracoes[msg.n] = msg.duracao
-		if msg.err != nil {
-			m.estados[msg.n], m.erros[msg.n] = Falhou, msg.err
-			if !m.abortado {
-				m.adicionar(linha{linhaErro, "Falhou: " + msg.err.Error()})
-			}
-		} else {
-			m.estados[msg.n] = Concluido
+		m.resultados[msg.n] = msg.r
+		if msg.r.Estado == modulos.Falhou && !m.abortado {
+			m.adicionar(linha{linhaErro, "Falhou: " + msg.r.Erro.Error()})
 		}
 		return m, nil
 
 	case fimMsg:
 		m.terminou, m.duracao = true, time.Since(m.inicio)
-		for i, e := range m.estados {
-			if e == Pendente {
-				m.estados[i] = NaoExecutado
+		for i, r := range m.resultados {
+			if r.Estado == modulos.Pendente || r.Estado == modulos.Rodando {
+				m.resultados[i].Estado = modulos.Cancelado
 			}
 		}
 		if m.abortado {
@@ -544,10 +514,10 @@ func (m modelo) iniciar() (tea.Model, tea.Cmd) {
 			m.fila = append(m.fila, mod)
 		}
 	}
-	n := len(m.fila)
-	m.estados = make([]Estado, n)
-	m.duracoes = make([]time.Duration, n)
-	m.erros = make([]error, n)
+	m.resultados = make([]modulos.Resultado, len(m.fila))
+	for i, mod := range m.fila {
+		m.resultados[i].Modulo = mod
+	}
 	m.tela, m.inicio = telaExecucao, time.Now()
 
 	ctx, cancelar := context.WithCancel(context.Background())
@@ -556,6 +526,11 @@ func (m modelo) iniciar() (tea.Model, tea.Cmd) {
 	log := m.cfg.Log
 	if err := log.IniciarBruto(); err != nil {
 		m.adicionar(linha{linhaAviso, "Não foi possível abrir o log bruto: " + err.Error()})
+	}
+	if !m.cfg.DryRun {
+		if err := log.Chown(m.conta.UID, m.conta.GID); err != nil {
+			m.adicionar(linha{linhaAviso, fmt.Sprintf("Não foi possível passar os logs para %s: %v", m.conta.Nome, err)})
+		}
 	}
 	log.Linha("INFO", "Configuração será aplicada para: "+m.conta.Nome)
 	for _, mod := range m.fila {
@@ -567,59 +542,41 @@ func (m modelo) iniciar() (tea.Model, tea.Cmd) {
 
 	s := sistema.Novo(ctx, m.cfg.Raiz, m.conta, m.cfg.Dados, m.cfg.DryRun, m.ponte, log)
 	s.Trabalho = m.cfg.Trabalho
-	go executar(s, m.fila, m.ponte)
+	go executar(ctx, s, m.fila, m.cfg.FalhaRapida, m.ponte)
 	return m, nil
 }
 
-// executar roda os módulos em ordem; o primeiro que falhar interrompe o resto
-// (como o set -e da versão em bash).
-func executar(s *sistema.Sistema, fila []*modulos.Modulo, b *ponte) {
+// executar roda os módulos numa goroutine, mandando o andamento para a tela.
+func executar(ctx context.Context, s *sistema.Sistema, fila []*modulos.Modulo, falhaRapida bool, b *ponte) {
 	defer b.enviar(fimMsg{})
 	restaurar, err := s.LiberarSudo()
 	if err != nil {
 		b.enviar(moduloInicioMsg{0})
-		b.enviar(moduloFimMsg{0, err, 0})
+		b.enviar(moduloFimMsg{0, modulos.Resultado{Modulo: fila[0], Estado: modulos.Falhou, Erro: err}})
 		return
 	}
 	defer restaurar()
 
-	for n, mod := range fila {
-		b.enviar(moduloInicioMsg{n})
-		passo := fmt.Sprintf("[%d/%d] %s", n+1, len(fila), mod.Titulo)
-		b.log.Linha("PASSO", passo)
-		fmt.Fprintln(b.log, passo)
-
-		inicio := time.Now()
-		err := rodarModulo(s, mod)
-		if err != nil {
-			b.log.Linha("ERRO", err.Error())
-			fmt.Fprintf(b.log, "[-] %s\n", err)
-		}
-		b.enviar(moduloFimMsg{n, err, time.Since(inicio)})
-		if err != nil {
-			break
-		}
-	}
-}
-
-func rodarModulo(s *sistema.Sistema, mod *modulos.Modulo) (err error) {
-	defer func() {
-		if r := recover(); r != nil {
-			err = fmt.Errorf("erro interno: %v", r)
-		}
-	}()
-	return mod.Executar(s)
+	modulos.Rodar(ctx, s, fila, falhaRapida, modulos.Observador{
+		Inicio: func(n int) {
+			b.enviar(moduloInicioMsg{n})
+			passo := fmt.Sprintf("[%d/%d] %s", n+1, len(fila), fila[n].Titulo)
+			b.log.Linha("PASSO", passo)
+			fmt.Fprintln(b.log, passo)
+		},
+		Fim: func(n int, r modulos.Resultado) {
+			if r.Estado == modulos.Falhou {
+				b.log.Linha("ERRO", r.Erro.Error())
+				fmt.Fprintf(b.log, "[-] %s\n", r.Erro)
+			}
+			b.enviar(moduloFimMsg{n, r})
+		},
+	})
 }
 
 func (m modelo) resultado() Resultado {
-	r := Resultado{Iniciado: m.fila != nil, Abortado: m.abortado, Avisos: m.avisos, Duracao: m.duracao}
-	for i, mod := range m.fila {
-		r.Modulos = append(r.Modulos, ResumoModulo{mod.Titulo, m.estados[i], m.duracoes[i], m.erros[i]})
-		if m.erros[i] != nil && r.Falha == nil {
-			r.Falha = m.erros[i]
-		}
-	}
-	return r
+	return Resultado{Iniciado: m.fila != nil, Abortado: m.abortado,
+		Modulos: m.resultados, Duracao: m.duracao}
 }
 
 // Rodar abre a TUI e devolve o que aconteceu.

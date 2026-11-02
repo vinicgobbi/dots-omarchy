@@ -2,6 +2,7 @@ package modulos
 
 import (
 	"context"
+	"errors"
 	"io"
 	"os"
 	"os/exec"
@@ -34,6 +35,19 @@ func modulosFalsos(erros map[string]error) []*Modulo {
 		return &Modulo{ID: id, Titulo: id, Deps: deps, Executar: func(*sistema.Sistema) error { return erros[id] }}
 	}
 	return []*Modulo{novo("a"), novo("b", "a"), novo("c", "b"), novo("d")}
+}
+
+func estados(resultados []Resultado) []Estado {
+	var e []Estado
+	for _, r := range resultados {
+		e = append(e, r.Estado)
+	}
+	return e
+}
+
+func rodarFalsos(ctx context.Context, fila []*Modulo, falhaRapida bool) []Resultado {
+	s := sistema.Novo(ctx, "", sistema.Conta{}, nil, true, &uiTeste{}, nil)
+	return Rodar(ctx, s, fila, falhaRapida, Observador{Inicio: func(int) {}, Fim: func(int, Resultado) {}})
 }
 
 func TestIDsUnicos(t *testing.T) {
@@ -98,6 +112,59 @@ func TestMarcarEmCadeia(t *testing.T) {
 	puxados := Marcar(fila, sel, 2)
 	if !slices.Equal(sel, []bool{true, true, true, false}) || len(puxados) != 2 {
 		t.Errorf("sel = %v, puxados = %v", sel, puxados)
+	}
+}
+
+func TestRodarPulaDependentesDaFalha(t *testing.T) {
+	fila := modulosFalsos(map[string]error{"a": errors.New("boom")})
+	obtido := estados(rodarFalsos(context.Background(), fila, false))
+	if !slices.Equal(obtido, []Estado{Falhou, Pulado, Pulado, Concluido}) {
+		t.Errorf("estados = %v", obtido)
+	}
+}
+
+func TestRodarFalhaRapida(t *testing.T) {
+	fila := modulosFalsos(map[string]error{"a": errors.New("boom")})
+	obtido := estados(rodarFalsos(context.Background(), fila, true))
+	if !slices.Equal(obtido, []Estado{Falhou, Cancelado, Cancelado, Cancelado}) {
+		t.Errorf("estados = %v", obtido)
+	}
+}
+
+func TestRodarCancelado(t *testing.T) {
+	ctx, cancelar := context.WithCancel(context.Background())
+	fila := modulosFalsos(nil)
+	fila[1].Executar = func(*sistema.Sistema) error {
+		cancelar()
+		return ctx.Err()
+	}
+	obtido := estados(rodarFalsos(ctx, fila, false))
+	if !slices.Equal(obtido, []Estado{Concluido, Cancelado, Cancelado, Cancelado}) {
+		t.Errorf("estados = %v", obtido)
+	}
+}
+
+func TestRodarConcluidoComAvisos(t *testing.T) {
+	fila := modulosFalsos(nil)
+	fila[0].Executar = func(s *sistema.Sistema) error {
+		s.UI.Aviso("cuidado")
+		return nil
+	}
+	r := rodarFalsos(context.Background(), fila, false)
+	if r[0].Estado != ConcluidoComAvisos || !slices.Equal(r[0].Avisos, []string{"cuidado"}) {
+		t.Errorf("resultado = %+v", r[0])
+	}
+	if r[1].Estado != Concluido || len(r[1].Avisos) != 0 {
+		t.Errorf("os avisos vazaram para o módulo seguinte: %+v", r[1])
+	}
+}
+
+func TestRodarPanicViraFalha(t *testing.T) {
+	fila := modulosFalsos(nil)
+	fila[3].Executar = func(*sistema.Sistema) error { panic("bug") }
+	r := rodarFalsos(context.Background(), fila, false)
+	if r[3].Estado != Falhou || !strings.Contains(r[3].Erro.Error(), "bug") {
+		t.Errorf("resultado = %+v", r[3])
 	}
 }
 

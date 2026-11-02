@@ -84,8 +84,8 @@ func (m modelo) cabecalho() string {
 	topo := strings.Join(partes, "  ")
 
 	etapas := []string{"Usuário", "Módulos", "Revisão", "Execução", "Resumo"}
-	atual := map[tela]int{telaUsuario: 0, telaOutroUsuario: 0, telaModulos: 1, telaRevisao: 2,
-		telaExecucao: 3, telaResumo: 4}[m.tela]
+	atual := map[tela]int{telaUsuario: 0, telaOutroUsuario: 0, telaModulos: 1,
+		telaRevisao: 2, telaExecucao: 3, telaResumo: 4}[m.tela]
 	var trilha []string
 	for i, e := range etapas {
 		switch {
@@ -374,26 +374,32 @@ func indentar(texto, prefixo string) string {
 // Execução
 // ------------------------------------------------------------------
 
-func (m modelo) icone(e Estado) string {
+func iconeEstado(e modulos.Estado, rodando string) string {
 	switch e {
-	case Rodando:
-		return m.spinner.View()
-	case Concluido:
+	case modulos.Rodando:
+		return rodando
+	case modulos.Concluido:
 		return estiloDestaque.Render("✓")
-	case Falhou:
+	case modulos.ConcluidoComAvisos:
+		return estiloAviso.Render("!")
+	case modulos.Falhou:
 		return estiloErro.Render("✗")
-	case NaoExecutado:
-		return estiloSutil.Render("–")
+	case modulos.Pulado:
+		return estiloAviso.Render("⤼")
+	case modulos.Cancelado:
+		return estiloSutil.Render("⊘")
 	}
 	return estiloSutil.Render("·")
 }
 
 func (m modelo) progresso() string {
 	feitos := 0
-	for _, e := range m.estados {
-		if e == Concluido || e == Falhou {
+	falhou := false
+	for _, r := range m.resultados {
+		if r.Estado != modulos.Pendente && r.Estado != modulos.Rodando {
 			feitos++
 		}
+		falhou = falhou || r.Estado == modulos.Falhou
 	}
 	total := len(m.fila)
 	decorrido := time.Since(m.inicio)
@@ -404,7 +410,7 @@ func (m modelo) progresso() string {
 	larguraBarra := max(10, min(40, m.largura-lipgloss.Width(contagem)-30))
 	cheio := larguraBarra * feitos / max(1, total)
 	cor := estiloDestaque
-	if m.abortado || m.resultado().Falha != nil {
+	if m.abortado || falhou {
 		cor = estiloErro
 	}
 	barra := cor.Render(strings.Repeat("━", cheio)) + estiloSutil.Render(strings.Repeat("━", larguraBarra-cheio))
@@ -440,13 +446,13 @@ func (m modelo) viewExecucao() string {
 		topo := max(0, min(m.atual-altura/2, len(m.fila)-altura))
 		for i := topo; i < min(len(m.fila), topo+altura); i++ {
 			nome := m.fila[i].Titulo
-			switch m.estados[i] {
-			case Rodando:
+			switch m.resultados[i].Estado {
+			case modulos.Rodando:
 				nome = estiloNegrito.Render(nome)
-			case Pendente, NaoExecutado:
+			case modulos.Pendente, modulos.Cancelado:
 				nome = estiloSutil.Render(nome)
 			}
-			linhas = append(linhas, cortar(m.icone(m.estados[i])+" "+nome, larguraModulos-4))
+			linhas = append(linhas, cortar(iconeEstado(m.resultados[i].Estado, m.spinner.View())+" "+nome, larguraModulos-4))
 		}
 		painelModulos := estiloCaixa.Width(larguraModulos - 2).Height(altura).Render(strings.Join(linhas, "\n"))
 		corpo = lipgloss.JoinHorizontal(lipgloss.Top, painelModulos, painelSaida)
@@ -562,63 +568,130 @@ func (m modelo) viewModal() string {
 // Resumo
 // ------------------------------------------------------------------
 
-func (m modelo) viewResumo() string {
-	r := m.resultado()
+// opcoesResumo: altura é o espaço disponível (com pouco, os módulos vão para
+// colunas) e limiteAvisos, quantos avisos listar (0 = todos).
+type opcoesResumo struct {
+	largura, altura, limiteAvisos int
+	dryRun                        bool
+	log, bruto                    string
+}
+
+func renderResumo(r Resultado, o opcoesResumo) string {
+	contagem := map[modulos.Estado]int{}
+	var avisos []string
+	for _, mod := range r.Modulos {
+		contagem[mod.Estado]++
+		for _, a := range mod.Avisos {
+			avisos = append(avisos, mod.Modulo.Titulo+": "+a)
+		}
+	}
+	ok := contagem[modulos.Concluido] + contagem[modulos.ConcluidoComAvisos]
+
 	var b strings.Builder
 	switch {
 	case r.Abortado:
 		b.WriteString(estiloErro.Bold(true).Render("■ Instalação abortada"))
-	case r.Falha != nil:
-		b.WriteString(estiloErro.Bold(true).Render("✗ A instalação parou num erro"))
+	case contagem[modulos.Falhou] > 0:
+		b.WriteString(estiloErro.Bold(true).Render("✗ Concluído com falhas"))
+	case contagem[modulos.Pulado]+contagem[modulos.Cancelado] > 0:
+		b.WriteString(estiloAviso.Bold(true).Render("! Concluído em parte"))
+	case len(avisos) > 0:
+		b.WriteString(estiloAviso.Bold(true).Render("! Concluído com avisos"))
 	default:
 		b.WriteString(estiloDestaque.Render("✓ Tudo pronto!"))
 	}
-	b.WriteString(estiloSutil.Render(fmt.Sprintf("  %d módulos · %s", len(r.Modulos), duracao(r.Duracao))) + "\n\n")
+	b.WriteString(estiloSutil.Render(fmt.Sprintf("  %d ok · %d falha(s) · %d pulado(s) · %d cancelado(s) · %s",
+		ok, contagem[modulos.Falhou], contagem[modulos.Pulado], contagem[modulos.Cancelado], duracao(r.Duracao))) + "\n\n")
 
-	larguraTitulo := 0
+	var erros []string
 	for _, mod := range r.Modulos {
-		larguraTitulo = max(larguraTitulo, lipgloss.Width(mod.Titulo))
-	}
-	larguraTitulo = min(larguraTitulo, 40)
-	var itens []string
-	for _, mod := range r.Modulos {
-		titulo := cortar(mod.Titulo, larguraTitulo)
-		item := m.icone(mod.Estado) + " " + titulo
-		switch mod.Estado {
-		case Concluido, Falhou:
-			item += strings.Repeat(" ", larguraTitulo-lipgloss.Width(titulo)+2) + estiloSutil.Render(duracao(mod.Duracao))
-		case NaoExecutado:
-			item = estiloSutil.Render(m.icone(mod.Estado) + " " + titulo + "  (não executado)")
+		if mod.Erro != nil && (mod.Estado == modulos.Falhou || mod.Estado == modulos.Pulado) {
+			erros = append(erros, cortar(iconeEstado(mod.Estado, "…")+" "+mod.Modulo.Titulo+": "+mod.Erro.Error(), o.largura))
 		}
-		itens = append(itens, item)
 	}
 
 	var depois []string
-	if r.Falha != nil && !r.Abortado {
-		depois = append(depois, "", estiloErro.Render("Erro: ")+r.Falha.Error())
+	if len(erros) > 0 {
+		depois = append(depois, "", estiloErro.Bold(true).Render("Erros"))
+		depois = append(depois, erros...)
 		depois = append(depois, estiloSutil.Render("Corrija e rode de novo: os módulos são idempotentes."))
 	}
-	if len(r.Avisos) > 0 {
-		depois = append(depois, "", estiloAviso.Bold(true).Render(fmt.Sprintf("Avisos (%d)", len(r.Avisos))))
-		limite := 6
-		for i, a := range r.Avisos {
-			if i == limite {
-				depois = append(depois, estiloSutil.Render(fmt.Sprintf("  … e mais %d no log", len(r.Avisos)-limite)))
+	if len(avisos) > 0 {
+		depois = append(depois, "", estiloAviso.Bold(true).Render(fmt.Sprintf("Avisos (%d)", len(avisos))))
+		for i, a := range avisos {
+			if o.limiteAvisos > 0 && i == o.limiteAvisos {
+				depois = append(depois, estiloSutil.Render(fmt.Sprintf("  … e mais %d no log", len(avisos)-i)))
 				break
 			}
-			depois = append(depois, cortar(estiloAviso.Render("  ⚠ ")+a, m.largura))
+			depois = append(depois, cortar(estiloAviso.Render("  ⚠ ")+a, o.largura))
 		}
 	}
 	depois = append(depois, "", estiloNegrito.Render("Próximos passos"))
-	if r.Falha == nil && !r.Abortado && !m.cfg.DryRun {
+	if ok > 0 && !o.dryRun {
 		depois = append(depois, "  • Reinicie a máquina para aplicar as mudanças de grupo e kernel.")
 	}
 	depois = append(depois,
-		"  • Log:            "+estiloSutil.Render(m.relativo(m.cfg.Log.Caminho)),
-		"  • Saída completa: "+estiloSutil.Render(m.relativo(m.cfg.Log.CaminhoBruto)))
+		"  • Log:            "+estiloSutil.Render(o.log),
+		"  • Saída completa: "+estiloSutil.Render(o.bruto))
 
-	ocupado := 2 + len(depois) + 1
-	b.WriteString(indentar(colunas(itens, m.alturaCorpo()-ocupado, m.largura-2), " ") + "\n")
+	maxItens := max(1, o.altura-(2+len(depois)+1))
+	b.WriteString(indentar(colunas(itensResumo(r.Modulos, maxItens, o.largura-2), maxItens, o.largura-2), " ") + "\n")
 	b.WriteString(strings.Join(depois, "\n"))
 	return b.String()
+}
+
+// itensResumo monta uma linha por módulo. Em várias colunas não há espaço para
+// o texto do estado: fica o ícone e o tempo, com o título cortado para caber.
+func itensResumo(resultados []modulos.Resultado, maxItens, largura int) []string {
+	larguraTitulo := 0
+	for _, mod := range resultados {
+		larguraTitulo = max(larguraTitulo, lipgloss.Width(mod.Modulo.Titulo))
+	}
+	larguraTitulo = min(larguraTitulo, 40)
+	nColunas := (len(resultados) + maxItens - 1) / maxItens
+	compacto := nColunas > 1
+	if compacto {
+		// Ícone e espaço (2), espaço e tempo (2 + 5), folga entre colunas (4).
+		larguraTitulo = max(10, min(larguraTitulo, largura/nColunas-13))
+	}
+
+	var itens []string
+	for _, mod := range resultados {
+		titulo := cortar(mod.Modulo.Titulo, larguraTitulo)
+		item := iconeEstado(mod.Estado, "…") + " " + titulo
+		preenchimento := strings.Repeat(" ", larguraTitulo-lipgloss.Width(titulo)+2)
+		switch mod.Estado {
+		case modulos.Concluido, modulos.Falhou:
+			item += preenchimento + estiloSutil.Render(duracao(mod.Duracao))
+		case modulos.ConcluidoComAvisos:
+			item += preenchimento + estiloSutil.Render(duracao(mod.Duracao))
+			if !compacto {
+				item += estiloAviso.Render(fmt.Sprintf("  %d aviso(s)", len(mod.Avisos)))
+			}
+		case modulos.Pulado:
+			if !compacto {
+				item += preenchimento + estiloAviso.Render("pulado")
+			}
+		default:
+			item = estiloSutil.Render(iconeEstado(mod.Estado, "…") + " " + titulo)
+			if !compacto {
+				item = estiloSutil.Render(iconeEstado(mod.Estado, "…") + " " + titulo + preenchimento + "cancelado")
+			}
+		}
+		itens = append(itens, item)
+	}
+	return itens
+}
+
+func (m modelo) viewResumo() string {
+	return renderResumo(m.resultado(), opcoesResumo{
+		largura: m.largura, altura: m.alturaCorpo(), limiteAvisos: 6, dryRun: m.cfg.DryRun,
+		log: m.relativo(m.cfg.Log.Caminho), bruto: m.relativo(m.cfg.Log.CaminhoBruto),
+	})
+}
+
+// Resumo é o resumo final para deixar no terminal depois que a TUI fecha (ou
+// para o modo texto): o mesmo da tela, com todos os módulos e avisos.
+func Resumo(r Resultado, dryRun bool, log, bruto string) string {
+	return renderResumo(r, opcoesResumo{largura: 200, altura: 1 << 16, dryRun: dryRun, log: log, bruto: bruto})
 }

@@ -28,13 +28,14 @@ import (
 var versao = "dev"
 
 type opcoes struct {
-	dryRun  bool
-	modulos string
-	usuario string
-	semTUI  bool
-	listar  bool
-	versao  bool
-	raiz    string
+	dryRun   bool
+	modulos  string
+	usuario  string
+	semTUI   bool
+	failFast bool
+	listar   bool
+	versao   bool
+	raiz     string
 }
 
 func argumentos() opcoes {
@@ -43,6 +44,7 @@ func argumentos() opcoes {
 	flag.StringVar(&o.modulos, "modulos", "", "roda só estes módulos (ids separados por vírgula) e as dependências, sem o menu")
 	flag.StringVar(&o.usuario, "usuario", "", "usuário-alvo (sem perguntar)")
 	flag.BoolVar(&o.semTUI, "sem-tui", false, "usa a saída em texto corrido em vez da interface interativa")
+	flag.BoolVar(&o.failFast, "fail-fast", false, "para tudo no primeiro módulo que falhar")
 	flag.BoolVar(&o.listar, "listar", false, "lista os módulos e seus ids e sai")
 	flag.BoolVar(&o.versao, "versao", false, "mostra a versão e sai")
 	flag.StringVar(&o.raiz, "raiz", "", "pasta do projeto (com data/ e dots/); padrão: a do executável")
@@ -192,12 +194,28 @@ func rodar() int {
 	log.Linha("INFO", "Sistema detectado: "+nomeSistema)
 
 	if terminal(os.Stdin) && terminal(os.Stdout) && !o.semTUI {
-		return rodarTUI(tui.Config{
+		cfg := tui.Config{
 			Versao: versao, Raiz: raiz, Dados: d, DryRun: o.dryRun, Log: log, NomeSistema: nomeSistema,
-			Modulos: lista, Selecao: selecao, PularMenu: selecao != nil, Conta: conta, Trabalho: trabalho,
-		})
+			Modulos: lista, Selecao: selecao, PularMenu: selecao != nil, Conta: conta,
+			FalhaRapida: o.failFast, Trabalho: trabalho,
+		}
+		return rodarTUI(cfg)
 	}
 	return rodarTexto(o, raiz, nomeSistema, d, lista, selecao, conta, log, trabalho)
+}
+
+// codigoSaida: 130 se algo foi cancelado, 1 se algo falhou.
+func codigoSaida(resultados []modulos.Resultado) int {
+	codigo := 0
+	for _, r := range resultados {
+		switch r.Estado {
+		case modulos.Cancelado:
+			return 130
+		case modulos.Falhou:
+			codigo = 1
+		}
+	}
+	return codigo
 }
 
 func rodarTUI(cfg tui.Config) int {
@@ -211,25 +229,8 @@ func rodarTUI(cfg tui.Config) int {
 	}
 
 	// A TUI some ao sair; deixa o resumo no terminal.
-	for _, m := range r.Modulos {
-		icone := map[tui.Estado]string{tui.Concluido: ui.Verde + "✓", tui.Falhou: ui.Vermelho + "✗",
-			tui.NaoExecutado: ui.Cinza + "–", tui.Pendente: ui.Cinza + "–", tui.Rodando: ui.Cinza + "–"}[m.Estado]
-		fmt.Printf("  %s%s %s\n", icone, ui.NC, m.Titulo)
-	}
-	for _, a := range r.Avisos {
-		fmt.Printf("  %s⚠ %s%s\n", ui.Amarelo, a, ui.NC)
-	}
-	fmt.Printf("%sTempo total: %s%s\n", ui.Negrito, r.Duracao.Round(time.Second), ui.NC)
-	fmt.Printf("Log: %s\nSaída completa: %s\n", cfg.Log.Caminho, cfg.Log.CaminhoBruto)
-	switch {
-	case r.Abortado:
-		fmt.Printf("%s[-] Cancelado pelo usuário.%s\n", ui.Vermelho, ui.NC)
-		return 130
-	case r.Falha != nil:
-		fmt.Printf("%s[-] Falha: %s%s\n", ui.Vermelho, r.Falha, ui.NC)
-		return 1
-	}
-	return 0
+	fmt.Println(tui.Resumo(r, cfg.DryRun, cfg.Log.Caminho, cfg.Log.CaminhoBruto))
+	return codigoSaida(r.Modulos)
 }
 
 // rodarTexto é o fluxo sem TUI: sem terminal interativo (ou com --sem-tui),
@@ -280,6 +281,10 @@ func rodarTexto(o opcoes, raiz, nomeSistema string, d *dados.Dados, lista []*mod
 			escolhidos = append(escolhidos, m)
 		}
 	}
+	if len(escolhidos) == 0 {
+		t.Aviso("Nenhum módulo selecionado. Nada a fazer.")
+		return 0
+	}
 
 	fmt.Println()
 	t.Info("Módulos selecionados:")
@@ -295,6 +300,11 @@ func rodarTexto(o opcoes, raiz, nomeSistema string, d *dados.Dados, lista []*mod
 	if err := log.IniciarBruto(); err == nil {
 		t.Info("Saída completa (bruta) desta execução: " + log.CaminhoBruto)
 	}
+	if !o.dryRun {
+		if err := log.Chown(conta.UID, conta.GID); err != nil {
+			t.Aviso(fmt.Sprintf("Não foi possível passar os logs para %s: %v", conta.Nome, err))
+		}
+	}
 
 	ctx, parar := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer parar()
@@ -308,31 +318,17 @@ func rodarTexto(o opcoes, raiz, nomeSistema string, d *dados.Dados, lista []*mod
 	defer restaurar()
 
 	inicio := time.Now()
-	var executados []string
-	for i, m := range escolhidos {
-		t.Passo(i+1, len(escolhidos), m.Titulo)
-		if err := m.Executar(s); err != nil {
-			if ctx.Err() != nil {
-				t.Erro("Cancelado pelo usuário.")
-				return 130
+	resultados := modulos.Rodar(ctx, s, escolhidos, o.failFast, modulos.Observador{
+		Inicio: func(n int) { t.Passo(n+1, len(escolhidos), escolhidos[n].Titulo) },
+		Fim: func(_ int, r modulos.Resultado) {
+			if r.Estado == modulos.Falhou {
+				t.Erro(fmt.Sprintf("'%s' falhou: %v", r.Modulo.Titulo, r.Erro))
 			}
-			var falha *sistema.FalhaComando
-			if errors.As(err, &falha) {
-				t.Erro("Falha inesperada: " + falha.Error())
-				return max(1, falha.Codigo)
-			}
-			t.Erro(err.Error())
-			return 1
-		}
-		executados = append(executados, m.Titulo)
-	}
+		},
+	})
 
-	segundos := int(time.Since(inicio).Seconds())
-	fmt.Printf("\n%s%s================ RESUMO ================%s\n", ui.Negrito, ui.Verde, ui.NC)
-	for _, item := range executados {
-		fmt.Printf("  %s✓%s %s\n", ui.Verde, ui.NC, item)
-	}
-	fmt.Printf("%sTempo total: %dm%ds%s\n", ui.Negrito, segundos/60, segundos%60, ui.NC)
-	fmt.Printf("%s%s=========================================%s\n", ui.Negrito, ui.Verde, ui.NC)
-	return 0
+	fmt.Println()
+	fmt.Println(tui.Resumo(tui.Resultado{Modulos: resultados, Duracao: time.Since(inicio), Abortado: ctx.Err() != nil},
+		o.dryRun, log.Caminho, log.CaminhoBruto))
+	return codigoSaida(resultados)
 }
