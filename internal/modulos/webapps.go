@@ -9,6 +9,7 @@ import (
 
 var webapps = &Modulo{
 	ID:     "webapps",
+	Grupo:  GrupoOmarchy,
 	Titulo: "Criar webapps",
 	Descricao: "Apaga os webapps de fábrica do Omarchy e cria YouTube, WhatsApp, Gmail, Netflix, Twitch, " +
 		"GitHub, Claude, GLPI e o admin console do Tailscale",

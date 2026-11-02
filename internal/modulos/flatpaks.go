@@ -4,10 +4,10 @@ import "github.com/vinicgobbi/dots-omarchy/internal/sistema"
 
 var flatpaks = &Modulo{
 	ID:        "flatpaks",
-	Titulo:    "Instalar Flatpaks",
+	Grupo:     GrupoAplicativos,
+	Titulo:    "Flatpaks",
 	Descricao: "Spotify nativo e a lista de aplicativos Flatpak (Postman, Obsidian, etc.)",
 	Executar:  instalarFlatpaks,
-	Deps:      []string{"pacotes_base"},
 }
 
 func instalarFlatpaks(s *sistema.Sistema) error {

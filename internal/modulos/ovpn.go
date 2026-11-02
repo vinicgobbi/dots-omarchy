@@ -5,7 +5,6 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"slices"
 	"strings"
 
 	"github.com/vinicgobbi/dots-omarchy/internal/sistema"
@@ -18,10 +17,50 @@ var (
 
 var ovpn = &Modulo{
 	ID:     "ovpn",
+	Grupo:  GrupoRede,
 	Titulo: "Importar perfis OpenVPN",
 	Descricao: "Instala o plugin OpenVPN do NetworkManager e importa os .ovpn de ./OVPN " +
 		"(aplicando DNS/domínio quando presentes no arquivo)",
 	Executar: importarOVPN,
+}
+
+// conexoesNM interpreta a saída de "nmcli -g NAME,TYPE connection show" (nome
+// -> tipo). No modo -g, ":" e "\" dentro dos valores vêm escapados com "\".
+func conexoesNM(saida string) map[string]string {
+	conexoes := map[string]string{}
+	for _, linha := range strings.Split(saida, "\n") {
+		if linha == "" {
+			continue
+		}
+		var campos []string
+		var atual strings.Builder
+		for i := 0; i < len(linha); i++ {
+			switch {
+			case linha[i] == '\\' && i+1 < len(linha):
+				i++
+				atual.WriteByte(linha[i])
+			case linha[i] == ':':
+				campos = append(campos, atual.String())
+				atual.Reset()
+			default:
+				atual.WriteByte(linha[i])
+			}
+		}
+		campos = append(campos, atual.String())
+		if len(campos) == 2 {
+			conexoes[campos[0]] = campos[1]
+		}
+	}
+	return conexoes
+}
+
+// avisarPermissaoOVPN avisa quando um .ovpn (que costuma trazer chave privada e
+// certificados embutidos) pode ser lido por qualquer usuário da máquina.
+func avisarPermissaoOVPN(s *sistema.Sistema, arquivo string) {
+	if info, err := os.Stat(arquivo); err == nil && info.Mode().Perm()&0o004 != 0 {
+		s.UI.Aviso(fmt.Sprintf("%s pode ser lido por qualquer usuário (permissão %o) e costuma conter chaves "+
+			"privadas: considere 'chmod 600'.", filepath.Base(arquivo), info.Mode().Perm()))
+	}
 }
 
 func capturas(re *regexp.Regexp, texto string) string {
@@ -49,19 +88,28 @@ func importarOVPN(s *sistema.Sistema) error {
 		return nil
 	}
 
-	res, err := s.Rodar([]string{"nmcli", "-g", "NAME", "connection", "show"},
-		sistema.Opts{Capturar: true, Leitura: true})
+	res, err := s.Rodar([]string{"nmcli", "-g", "NAME,TYPE", "connection", "show"},
+		sistema.Opts{Capturar: true, Leitura: true, SemCheck: true})
 	if err != nil {
 		return err
 	}
-	existentes := strings.Split(res.Saida, "\n")
+	existentes := conexoesNM(res.Saida)
 
 	for _, arquivo := range arquivos {
 		nome := strings.TrimSuffix(filepath.Base(arquivo), ".ovpn")
 
-		// Reimportar do zero para o script continuar idempotente em reexecuções.
-		if slices.Contains(existentes, nome) {
-			if _, err := s.Rodar([]string{"nmcli", "connection", "delete", nome}, sistema.Opts{Quieto: true}); err != nil {
+		avisarPermissaoOVPN(s, arquivo)
+
+		// Reimporta do zero para continuar idempotente em reexecuções, mas só
+		// apaga se a conexão com esse nome for mesmo uma VPN, para não levar
+		// junto uma conexão cabeada/Wi-Fi homônima.
+		if tipo, ok := existentes[nome]; ok {
+			if tipo != "vpn" {
+				s.UI.Aviso(fmt.Sprintf("Já existe uma conexão '%s' do tipo %s (não VPN): pulando %s para não sobrescrevê-la.",
+					nome, tipo, filepath.Base(arquivo)))
+				continue
+			}
+			if _, err := s.Rodar([]string{"nmcli", "connection", "delete", "id", nome}, sistema.Opts{Quieto: true}); err != nil {
 				return err
 			}
 		}

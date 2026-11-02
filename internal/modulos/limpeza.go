@@ -1,7 +1,6 @@
 package modulos
 
 import (
-	"path/filepath"
 	"strings"
 
 	"github.com/vinicgobbi/dots-omarchy/internal/sistema"
@@ -9,8 +8,9 @@ import (
 
 var limpeza = &Modulo{
 	ID:        "limpeza",
+	Grupo:     GrupoFinalizacao,
 	Titulo:    "Limpeza final",
-	Descricao: "Remove pacotes órfãos, limpa o cache do pacman e os temporários de /tmp",
+	Descricao: "Remove pacotes órfãos e limpa o cache do pacman",
 	Executar:  limpezaFinal,
 }
 
@@ -28,14 +28,6 @@ func limpezaFinal(s *sistema.Sistema) error {
 	if err := s.Run("pacman", "-Sc", "--noconfirm"); err != nil {
 		return err
 	}
-
-	// Mesmo alcance do "rm -rf /tmp/*": não mexe em entradas ocultas.
-	itens, _ := filepath.Glob("/tmp/*")
-	for _, item := range itens {
-		s.Remover(item)
-	}
-
-	s.UI.Sucesso("Instalação finalizada com sucesso!")
-	s.UI.Info("Recomenda-se reiniciar a máquina para aplicar as mudanças de grupo e kernel.")
+	s.UI.Sucesso("Limpeza concluída.")
 	return nil
 }

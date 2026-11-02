@@ -6,36 +6,25 @@ import (
 	"github.com/vinicgobbi/dots-omarchy/internal/sistema"
 )
 
-var pacotesBase = &Modulo{
-	ID:        "pacotes_base",
-	Titulo:    "Instalar pacotes base",
-	Descricao: "Docker, VSCode, PHP, Zsh e ferramentas de SQL Server",
-	Executar:  instalarPacotesBase,
-	Deps:      []string{"repositorios"},
+var vscode = &Modulo{
+	ID:        "vscode",
+	Grupo:     GrupoDesenvolvimento,
+	Titulo:    "Visual Studio Code",
+	Descricao: "VSCode pelo pacote do repositório [omarchy], com o tema atual do Omarchy",
+	Executar:  instalarVSCode,
 }
 
-func instalarPacotesBase(s *sistema.Sistema) error {
-	s.UI.Info("Instalando pacotes base e utilitários...")
-	// Docker, PHP/composer e unixODBC são oficiais (repo extra/core). O
-	// repositório [omarchy] já traz o visual-studio-code-bin pré-compilado
-	// (mesmo pacote que "omarchy install editor vscode" usa); msodbcsql e
-	// mssql-tools só existem na AUR (resolvidos pelo Chaotic-AUR, sem compilar).
-	if err := s.Pacman(s.Dados.Lista("pacotes_base", "pacman")...); err != nil {
-		return err
-	}
-	if err := s.Aur(s.Dados.Lista("pacotes_base", "aur")...); err != nil {
+func instalarVSCode(s *sistema.Sistema) error {
+	s.UI.Info("Instalando o VSCode...")
+	// O repositório [omarchy] já traz o visual-studio-code-bin pré-compilado
+	// (mesmo pacote que "omarchy install editor vscode" usa).
+	if err := s.Pacman(s.Dados.Lista("vscode", "pacman")...); err != nil {
 		return err
 	}
 	if err := aplicarConfigOmarchyVSCode(s); err != nil {
 		return err
 	}
-
-	// O pacote da AUR instala em /opt/mssql-tools (sem versão).
-	if err := s.Escrever("/etc/profile.d/mssql-tools.sh", "export PATH=\"$PATH:/opt/mssql-tools/bin\"\n",
-		sistema.Escrita{}); err != nil {
-		return err
-	}
-	s.UI.Sucesso("Pacotes e MS SQL instalados.")
+	s.UI.Sucesso("VSCode instalado.")
 	return nil
 }
 

@@ -4,6 +4,7 @@ import "github.com/vinicgobbi/dots-omarchy/internal/sistema"
 
 var atualizacao = &Modulo{
 	ID:        "atualizacao",
+	Grupo:     GrupoSistema,
 	Titulo:    "Atualizar sistema",
 	Descricao: "Roda o omarchy-update (snapshot, keyring, migrations e upgrade completo)",
 	Executar:  atualizarSistema,

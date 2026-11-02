@@ -8,15 +8,17 @@ import (
 	"github.com/vinicgobbi/dots-omarchy/internal/sistema"
 )
 
-// Chave GPG oficial do Chaotic-AUR (aur.chaotic.cx) — repo binário que serve
-// pacotes pré-compilados do AUR, evitando compilar tudo na mão.
+// Fingerprint completo da chave oficial do Chaotic-AUR (aur.chaotic.cx) — repo
+// binário que serve pacotes pré-compilados do AUR, evitando compilar tudo na
+// mão. Um ID curto poderia colidir com a chave de outra pessoa.
 const (
-	chaoticAURKey = "3056513887B78AEB"
+	chaoticAURKey = "EF925EA60F33D0CB85C44AD13056513887B78AEB"
 	pacmanConf    = "/etc/pacman.conf"
 )
 
 var repositorios = &Modulo{
 	ID:        "repositorios",
+	Grupo:     GrupoSistema,
 	Titulo:    "Configurar repositórios",
 	Descricao: "Habilita o Chaotic-AUR (pacotes da AUR pré-compilados) para o yay",
 	Executar:  configurarRepositorios,

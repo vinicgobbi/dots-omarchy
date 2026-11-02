@@ -10,7 +10,8 @@ import (
 
 var virtManager = &Modulo{
 	ID:        "virt_manager",
-	Titulo:    "Instalar virt-manager (QEMU/KVM)",
+	Grupo:     GrupoRede,
+	Titulo:    "virt-manager (QEMU/KVM)",
 	Descricao: "QEMU/KVM, libvirt e a interface gráfica virt-manager para máquinas virtuais",
 	Executar:  instalarVirtManager,
 }

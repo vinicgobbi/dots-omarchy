@@ -4,10 +4,10 @@ import "github.com/vinicgobbi/dots-omarchy/internal/sistema"
 
 var launchersJogos = &Modulo{
 	ID:        "launchers_jogos",
-	Titulo:    "Instalar launchers de jogos",
+	Grupo:     GrupoAplicativos,
+	Titulo:    "Launchers de jogos",
 	Descricao: "Steam e Heroic nativos; ProtonPlus e PrismLauncher via Flatpak",
 	Executar:  instalarLaunchersJogos,
-	Deps:      []string{"pacotes_base"},
 }
 
 func instalarLaunchersJogos(s *sistema.Sistema) error {

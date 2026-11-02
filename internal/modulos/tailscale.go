@@ -8,7 +8,8 @@ import (
 
 var tailscale = &Modulo{
 	ID:        "tailscale",
-	Titulo:    "Instalar Tailscale",
+	Grupo:     GrupoRede,
+	Titulo:    "Tailscale",
 	Descricao: "Tailscale (VPN mesh) com widget na barra e webapp do admin console",
 	Executar:  instalarTailscale,
 }

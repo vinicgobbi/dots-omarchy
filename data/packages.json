@@ -2,17 +2,11 @@
   "repositorios": {
     "pacman": ["curl", "gnupg", "jq", "base-devel", "git"]
   },
-  "pacotes_base": {
-    "pacman": [
-      "flatpak", "zsh", "git", "curl", "jq", "xdg-user-dirs",
-      "docker", "docker-compose", "docker-buildx", "php", "composer", "unixodbc", "bat",
-      "visual-studio-code-bin"
-    ],
-    "aur": ["msodbcsql", "mssql-tools"]
+  "shell": {
+    "pacman": ["zsh", "git", "curl", "bat"]
   },
-  "solaar": {
-    "pacman": ["solaar"],
-    "flatpak_alternativo": "io.github.pwr_solaar.solaar"
+  "bitwarden": {
+    "aur": ["bitwarden-bin"]
   },
   "flatpaks": {
     "pacman": ["spotify"]
@@ -20,18 +14,29 @@
   "launchers_jogos": {
     "pacman": ["steam", "heroic-games-launcher-bin"]
   },
+  "solaar": {
+    "pacman": ["solaar"],
+    "flatpak_alternativo": "io.github.pwr_solaar.solaar"
+  },
+  "git_gcm": {
+    "pacman": ["git"]
+  },
+  "docker": {
+    "pacman": ["docker", "docker-compose", "docker-buildx"]
+  },
+  "vscode": {
+    "pacman": ["visual-studio-code-bin"]
+  },
+  "php_sqlserver": {
+    "pacman": ["php", "composer", "unixodbc"],
+    "aur": ["msodbcsql", "mssql-tools", "php-sqlsrv", "php-pdo_sqlsrv"]
+  },
+  "rust": {
+    "pacman": ["base-devel", "curl"],
+    "cargo": ["eza", "topgrade"]
+  },
   "tailscale": {
     "pacman": ["tailscale"]
-  },
-  "bitwarden": {
-    "aur": ["bitwarden-bin"]
-  },
-  "php_extensoes": {
-    "aur": ["php-sqlsrv", "php-pdo_sqlsrv"]
-  },
-  "rust_tools": {
-    "pacman": ["base-devel"],
-    "cargo": ["eza", "topgrade"]
   },
   "ovpn": {
     "pacman": ["networkmanager-openvpn"]
@@ -39,12 +44,7 @@
   "virt_manager": {
     "pacman": ["qemu-desktop", "libvirt", "virt-manager"]
   },
-  "vscode_nautilus": {
-    "pacman": ["nautilus-python", "python-gobject", "wl-clipboard", "xclip"],
-    "extensoes_git": [
-      "https://github.com/vinicgobbi/vscode_nautilus.git",
-      "https://github.com/vinicgobbi/nautilus-copypath.git",
-      "https://github.com/vinicgobbi/omarchy-nautilus-openinterminal.git"
-    ]
+  "nautilus": {
+    "pacman": ["nautilus-python", "python-gobject", "wl-clipboard", "xclip", "git", "xdg-user-dirs"]
   }
 }

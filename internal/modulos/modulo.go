@@ -1,5 +1,6 @@
 // Package modulos registra as etapas do setup, na ordem de execução, e
-// resolve as dependências entre elas.
+// resolve as dependências entre elas. Cada módulo pertence a um grupo e é
+// autocontido: instala o que usa, então pode ser marcado ou desmarcado sozinho.
 package modulos
 
 import (
@@ -8,11 +9,23 @@ import (
 	"github.com/vinicgobbi/dots-omarchy/internal/sistema"
 )
 
+// Grupos, na ordem em que aparecem na interface e rodam.
+const (
+	GrupoSistema         = "Sistema"
+	GrupoTerminal        = "Terminal"
+	GrupoAplicativos     = "Aplicativos"
+	GrupoDesenvolvimento = "Desenvolvimento"
+	GrupoRede            = "Rede e virtualização"
+	GrupoOmarchy         = "Omarchy e aparência"
+	GrupoFinalizacao     = "Finalização"
+)
+
 // Modulo é uma etapa do setup. Deps são ids de outros módulos que precisam
 // rodar antes. Confirma marca módulos que perguntam antes de instalar algo
 // (código de terceiros), para a revisão avisar.
 type Modulo struct {
 	ID        string
+	Grupo     string
 	Titulo    string
 	Descricao string
 	Executar  func(s *sistema.Sistema) error
@@ -20,13 +33,25 @@ type Modulo struct {
 	Confirma  bool
 }
 
-// Todos devolve os módulos na ordem de execução.
+// Todos devolve os módulos na ordem de execução (agrupados por Grupo).
 func Todos() []*Modulo {
 	return []*Modulo{
-		atualizacao, repositorios, pacotesBase, solaar, flatpaks, launchersJogos,
-		tailscale, chromeGCM, bitwarden, phpExtensoes, ambienteUsuario, rustTools,
-		claudeCode, ovpn, virtManager, vscodeNautilus, dotsOmarchy, webapps,
-		limpeza, pluginsOmarchy, temasOmarchy,
+		// Sistema
+		atualizacao, repositorios,
+		// Terminal. O shell vem antes dos módulos que mexem no ~/.zshrc (node):
+		// o instalador do Oh My Zsh troca o arquivo.
+		shell,
+		// Aplicativos
+		chrome, bitwarden, flatpaks, launchersJogos, solaar,
+		// Desenvolvimento
+		gitGCM, docker, vscode, node, phpSQLServer, rust, claudeCode,
+		// Rede e virtualização
+		tailscale, ovpn, virtManager,
+		// Omarchy e aparência. Plugins e temas ficam por último: são código de
+		// terceiros e perguntam antes.
+		nautilus, dotsOmarchy, webapps, pluginsOmarchy, temasOmarchy,
+		// Finalização
+		limpeza,
 	}
 }
 
@@ -58,8 +83,8 @@ func Marcar(lista []*Modulo, sel []bool, i int) []Puxado {
 }
 
 // Resolver marca qualquer dependência de um módulo selecionado, mesmo que o
-// usuário a tenha desmarcado. Sem isso, dá pra selecionar só "Extensões PHP
-// (SQL Server)" sem "Instalar pacotes base" e a instalação falha no meio.
+// usuário a tenha desmarcado. Sem isso, dá pra selecionar só "PHP e SQL Server"
+// sem "Configurar repositórios" e a instalação falha no meio.
 func Resolver(lista []*Modulo, sel []bool) []Puxado {
 	var puxados []Puxado
 	for i := range lista {

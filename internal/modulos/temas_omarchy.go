@@ -9,7 +9,8 @@ import (
 
 var temasOmarchy = &Modulo{
 	ID:        "temas_omarchy",
-	Titulo:    "Instalar temas extras",
+	Grupo:     GrupoOmarchy,
+	Titulo:    "Temas extras",
 	Descricao: "Pergunta antes de instalar os temas listados em data/themes.json (o último fica ativo)",
 	Executar:  instalarTemasOmarchy,
 	Confirma:  true,
@@ -39,7 +40,7 @@ func instalarTemasOmarchy(s *sistema.Sistema) error {
 		Itens:    temas,
 		Pergunta: fmt.Sprintf("Instalar os %d temas acima?", len(temas)),
 	}) {
-		s.UI.Aviso("Temas não instalados (escolha do usuário).")
+		s.UI.Info("Temas não instalados (escolha do usuário).")
 		return nil
 	}
 

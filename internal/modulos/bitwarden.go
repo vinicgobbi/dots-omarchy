@@ -4,7 +4,8 @@ import "github.com/vinicgobbi/dots-omarchy/internal/sistema"
 
 var bitwarden = &Modulo{
 	ID:        "bitwarden",
-	Titulo:    "Instalar Bitwarden nativo",
+	Grupo:     GrupoAplicativos,
+	Titulo:    "Bitwarden",
 	Descricao: "Instala o Bitwarden desktop (necessário para integração nativa com o navegador)",
 	Executar:  instalarBitwardenNativo,
 	Deps:      []string{"repositorios"},

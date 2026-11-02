@@ -8,7 +8,8 @@ import (
 
 var claudeCode = &Modulo{
 	ID:        "claude_code",
-	Titulo:    "Instalar Claude Code",
+	Grupo:     GrupoDesenvolvimento,
+	Titulo:    "Claude Code",
 	Descricao: "CLI oficial da Anthropic para desenvolvimento assistido por IA no terminal",
 	Executar:  instalarClaudeCode,
 }
@@ -19,7 +20,7 @@ func instalarClaudeCode(s *sistema.Sistema) error {
 	// por cima disso criaria uma segunda cópia concorrendo no PATH; então, se já
 	// existir para o usuário-alvo (por qualquer via), pulamos.
 	if s.OkUsuario("command -v claude") {
-		s.UI.Aviso(fmt.Sprintf("Claude Code já está instalado para %s (via mise, no Omarchy); pulando reinstalação.", s.Usuario()))
+		s.UI.Info(fmt.Sprintf("Claude Code já está instalado para %s (via mise, no Omarchy); pulando reinstalação.", s.Usuario()))
 		return nil
 	}
 

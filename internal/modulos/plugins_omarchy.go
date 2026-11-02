@@ -10,7 +10,8 @@ import (
 
 var pluginsOmarchy = &Modulo{
 	ID:        "plugins_omarchy",
-	Titulo:    "Instalar plugins de terceiros",
+	Grupo:     GrupoOmarchy,
+	Titulo:    "Plugins de terceiros",
 	Descricao: "Mostra os riscos e pergunta antes de instalar os plugins da barra listados em data/plugins.json",
 	Executar:  instalarPluginsOmarchy,
 	Confirma:  true,
@@ -54,7 +55,7 @@ func instalarPluginsOmarchy(s *sistema.Sistema) error {
 		Pergunta: fmt.Sprintf("Entendi os riscos. Instalar os %d plugins acima?", len(plugins)),
 		Perigo:   true,
 	}) {
-		s.UI.Aviso("Plugins de terceiros não instalados (escolha do usuário).")
+		s.UI.Info("Plugins de terceiros não instalados (escolha do usuário).")
 		return nil
 	}
 

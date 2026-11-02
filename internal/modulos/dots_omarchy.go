@@ -19,6 +19,7 @@ var ignorados = map[string]bool{".gitkeep": true}
 
 var dotsOmarchy = &Modulo{
 	ID:     "dots_omarchy",
+	Grupo:  GrupoOmarchy,
 	Titulo: "Aplicar dots do Omarchy",
 	Descricao: "Copia a config do Hyprland, do omarchy-shell, o screensaver, o Solaar, os scripts de " +
 		"~/.local/bin e o CLAUDE.md global, se houver (com backup do que existia)",
