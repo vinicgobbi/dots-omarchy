@@ -132,6 +132,16 @@ func rodar() int {
 		return falhar("Execute como root (sudo ./setup.sh), ou use --dry-run para só simular.")
 	}
 
+	// Legível por todos: os scripts como usuário-alvo leem os downloads daqui.
+	trabalho, err := os.MkdirTemp("", "post-omarchy-")
+	if err != nil {
+		return falhar(err.Error())
+	}
+	defer os.RemoveAll(trabalho)
+	if err := os.Chmod(trabalho, 0o755); err != nil {
+		return falhar(err.Error())
+	}
+
 	// A regra temporária de sudo (sistema.LiberarSudo) nunca pode sobrar: sai
 	// na saída normal, em SIGTERM/SIGHUP (terminal fechado) e, se uma execução
 	// anterior morreu com SIGKILL, aqui no início.
@@ -142,6 +152,7 @@ func rodar() int {
 	go func() {
 		<-sinais
 		sistema.RemoverSudo()
+		os.RemoveAll(trabalho)
 		os.Exit(143)
 	}()
 	raiz, err := acharRaiz(o.raiz)
@@ -183,10 +194,10 @@ func rodar() int {
 	if terminal(os.Stdin) && terminal(os.Stdout) && !o.semTUI {
 		return rodarTUI(tui.Config{
 			Versao: versao, Raiz: raiz, Dados: d, DryRun: o.dryRun, Log: log, NomeSistema: nomeSistema,
-			Modulos: lista, Selecao: selecao, PularMenu: selecao != nil, Conta: conta,
+			Modulos: lista, Selecao: selecao, PularMenu: selecao != nil, Conta: conta, Trabalho: trabalho,
 		})
 	}
-	return rodarTexto(o, raiz, nomeSistema, d, lista, selecao, conta, log)
+	return rodarTexto(o, raiz, nomeSistema, d, lista, selecao, conta, log, trabalho)
 }
 
 func rodarTUI(cfg tui.Config) int {
@@ -224,7 +235,7 @@ func rodarTUI(cfg tui.Config) int {
 // rodarTexto é o fluxo sem TUI: sem terminal interativo (ou com --sem-tui),
 // roda todos os módulos ou os de --modulos.
 func rodarTexto(o opcoes, raiz, nomeSistema string, d *dados.Dados, lista []*modulos.Modulo,
-	selecao []bool, conta *sistema.Conta, log *logs.Log) int {
+	selecao []bool, conta *sistema.Conta, log *logs.Log, trabalho string) int {
 	interativo := terminal(os.Stdin)
 	t := ui.NovoTexto(log, interativo)
 	t.Banner()
@@ -288,6 +299,7 @@ func rodarTexto(o opcoes, raiz, nomeSistema string, d *dados.Dados, lista []*mod
 	ctx, parar := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer parar()
 	s := sistema.Novo(ctx, raiz, *conta, d, o.dryRun, t, log)
+	s.Trabalho = trabalho
 	restaurar, err := s.LiberarSudo()
 	if err != nil {
 		t.Erro(err.Error())

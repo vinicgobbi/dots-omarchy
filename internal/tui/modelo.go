@@ -32,6 +32,7 @@ type Config struct {
 	Selecao     []bool // pré-seleção; nil marca tudo
 	PularMenu   bool   // a seleção veio de --modulos
 	Conta       *sistema.Conta
+	Trabalho    string // diretório temporário da execução
 }
 
 type Estado int
@@ -565,6 +566,7 @@ func (m modelo) iniciar() (tea.Model, tea.Cmd) {
 	}
 
 	s := sistema.Novo(ctx, m.cfg.Raiz, m.conta, m.cfg.Dados, m.cfg.DryRun, m.ponte, log)
+	s.Trabalho = m.cfg.Trabalho
 	go executar(s, m.fila, m.ponte)
 	return m, nil
 }

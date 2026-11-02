@@ -11,6 +11,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -53,7 +54,11 @@ type Sistema struct {
 	DryRun bool
 	UI     ui.UI
 	Log    *logs.Log
-	ctx    context.Context
+	// Trabalho é o diretório temporário exclusivo desta execução (ver Temp).
+	Trabalho string
+	// TemaAtivo é a URL do tema que deve ficar ativo (vazio = o último da lista).
+	TemaAtivo string
+	ctx       context.Context
 }
 
 func Novo(ctx context.Context, raiz string, conta Conta, d *dados.Dados, dryRun bool, u ui.UI, log *logs.Log) *Sistema {
@@ -62,6 +67,10 @@ func Novo(ctx context.Context, raiz string, conta Conta, d *dados.Dados, dryRun 
 
 func (s *Sistema) Usuario() string { return s.Conta.Nome }
 func (s *Sistema) Home() string    { return s.Conta.Home }
+
+// Temp devolve um caminho no diretório temporário da execução, em vez de um
+// nome previsível em /tmp, onde outro usuário poderia criá-lo antes.
+func (s *Sistema) Temp(nome string) string { return filepath.Join(s.Trabalho, nome) }
 
 // ------------------------------------------------------------------
 // Comandos
@@ -185,8 +194,7 @@ func (s *Sistema) Pacman(pacotes ...string) error {
 }
 
 // Aur instala via yay como o usuário-alvo (o makepkg recusa rodar como root).
-// Depende do módulo "repositorios" ter liberado sudo sem senha para o pacman
-// nesse usuário antes.
+// O sudo não pede senha: ver LiberarSudo.
 func (s *Sistema) Aur(pacotes ...string) error {
 	if len(pacotes) == 0 {
 		return nil
@@ -195,6 +203,11 @@ func (s *Sistema) Aur(pacotes ...string) error {
 }
 
 func (s *Sistema) Flatpak(apps ...string) error {
+	if !ComandoExiste("flatpak") {
+		if err := s.Pacman("flatpak"); err != nil {
+			return err
+		}
+	}
 	if err := s.Run("flatpak", "remote-add", "--if-not-exists", "flathub",
 		"https://flathub.org/repo/flathub.flatpakrepo"); err != nil {
 		return err
@@ -253,6 +266,30 @@ func BuscarConta(nome string) (Conta, error) {
 		return Conta{}, fmt.Errorf("não foi possível ler a conta '%s'", nome)
 	}
 	return conta, nil
+}
+
+// DetectarUsuario descobre quem executou o programa (sudo, pkexec ou o dono da
+// sessão), para sugerir como usuário-alvo. Ignora root.
+func DetectarUsuario() string {
+	candidatos := []string{os.Getenv("SUDO_USER")}
+	if uid := os.Getenv("PKEXEC_UID"); uid != "" {
+		if saida, err := exec.Command("id", "-nu", uid).Output(); err == nil {
+			candidatos = append(candidatos, strings.TrimSpace(string(saida)))
+		}
+	}
+	if saida, err := exec.Command("logname").Output(); err == nil {
+		candidatos = append(candidatos, strings.TrimSpace(string(saida)))
+	}
+	candidatos = append(candidatos, os.Getenv("USER"))
+	for _, nome := range candidatos {
+		if nome == "" || nome == "root" {
+			continue
+		}
+		if _, err := BuscarConta(nome); err == nil {
+			return nome
+		}
+	}
+	return ""
 }
 
 // ContasHumanas lista as contas de gente (UID >= 1000, com shell de login).
