@@ -1,6 +1,6 @@
 module github.com/vinicgobbi/dots-omarchy
 
-go 1.24.2
+go 1.27.3
 
 require (
 	github.com/bmatcuk/doublestar/v4 v4.10.2

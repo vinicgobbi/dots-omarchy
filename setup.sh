@@ -26,7 +26,8 @@ if desatualizado; then
     pacman -S --needed --noconfirm go
   fi
   echo "[*] Compilando o post-omarchy..."
-  (cd "$raiz" && go build -trimpath -ldflags='-s -w' -o "$binario" .)
+  # GOTOOLCHAIN=auto: baixa a versão do go.mod se a do sistema for mais antiga.
+  (cd "$raiz" && GOTOOLCHAIN=auto go build -trimpath -ldflags='-s -w' -o "$binario" .)
   # Compilado via sudo: devolve o binário ao dono do projeto.
   chown --reference="$raiz" "$binario" 2>/dev/null || true
 fi
