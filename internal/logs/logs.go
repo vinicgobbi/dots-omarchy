@@ -1,15 +1,18 @@
 // Package logs grava os dois arquivos de log de cada execução, em logs/ ao
-// lado do projeto:
+// lado do projeto, legíveis só pelo dono (a saída dos comandos pode ter dados
+// sensíveis):
 //
 //	<prefixo>_<timestamp>.log      — só as mensagens info/aviso/erro/sucesso/passo,
 //	                                 com hora e nível, sem código de cor.
 //	<prefixo>_<timestamp>.raw.log  — transcrição bruta de tudo a partir de
 //	                                 IniciarBruto (inclui a saída de
-//	                                 pacman/yay/curl/flatpak etc.).
+//	                                 pacman/yay/flatpak etc.).
 package logs
 
 import (
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"sync"
@@ -22,21 +25,49 @@ type Log struct {
 	CaminhoBruto string
 	limpo        *os.File
 	bruto        *os.File
+	pastaCriada  string // logs/, quando foi criada nesta execução
 }
 
 // Iniciar prepara só o log "limpo"; o bruto começa em IniciarBruto, quando a
 // execução dos módulos começa.
 func Iniciar(raiz, prefixo string) (*Log, error) {
 	pasta := filepath.Join(raiz, "logs")
+	pastaCriada := ""
+	if _, err := os.Stat(pasta); errors.Is(err, fs.ErrNotExist) {
+		pastaCriada = pasta
+	}
 	if err := os.MkdirAll(pasta, 0o755); err != nil {
 		return nil, err
 	}
 	base := filepath.Join(pasta, prefixo+"_"+time.Now().Format("2006-01-02_150405"))
-	limpo, err := os.Create(base + ".log")
+	limpo, err := os.OpenFile(base+".log", os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o600)
 	if err != nil {
 		return nil, err
 	}
-	return &Log{Caminho: base + ".log", CaminhoBruto: base + ".raw.log", limpo: limpo}, nil
+	return &Log{Caminho: base + ".log", CaminhoBruto: base + ".raw.log", limpo: limpo, pastaCriada: pastaCriada}, nil
+}
+
+// Chown passa os logs (e a pasta, se foi criada nesta execução) para o
+// usuário-alvo: o programa roda como root, mas é ele quem vai ler.
+func (l *Log) Chown(uid, gid int) error {
+	if os.Geteuid() != 0 {
+		return nil
+	}
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	caminhos := []string{l.Caminho}
+	if l.bruto != nil {
+		caminhos = append(caminhos, l.CaminhoBruto)
+	}
+	if l.pastaCriada != "" {
+		caminhos = append(caminhos, l.pastaCriada)
+	}
+	for _, caminho := range caminhos {
+		if err := os.Chown(caminho, uid, gid); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // Linha grava uma mensagem com timestamp e nível no log limpo e, se já
@@ -54,7 +85,7 @@ func (l *Log) Linha(nivel, mensagem string) {
 func (l *Log) IniciarBruto() error {
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	f, err := os.OpenFile(l.CaminhoBruto, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
+	f, err := os.OpenFile(l.CaminhoBruto, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o600)
 	if err != nil {
 		return err
 	}
