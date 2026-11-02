@@ -82,6 +82,26 @@ func Marcar(lista []*Modulo, sel []bool, i int) []Puxado {
 	return puxados
 }
 
+// Desmarcar tira o módulo i da seleção e, em cadeia, os módulos marcados que
+// dependem dele. Devolve os que saíram junto.
+func Desmarcar(lista []*Modulo, sel []bool, i int) []int {
+	sel[i] = false
+	var removidos []int
+	for j, m := range lista {
+		if !sel[j] {
+			continue
+		}
+		for _, d := range m.Deps {
+			if d == lista[i].ID {
+				removidos = append(removidos, j)
+				removidos = append(removidos, Desmarcar(lista, sel, j)...)
+				break
+			}
+		}
+	}
+	return removidos
+}
+
 // Resolver marca qualquer dependência de um módulo selecionado, mesmo que o
 // usuário a tenha desmarcado. Sem isso, dá pra selecionar só "PHP e SQL Server"
 // sem "Configurar repositórios" e a instalação falha no meio.
@@ -93,22 +113,6 @@ func Resolver(lista []*Modulo, sel []bool) []Puxado {
 		}
 	}
 	return puxados
-}
-
-// Dependentes devolve os módulos selecionados que dependem de i.
-func Dependentes(lista []*Modulo, sel []bool, i int) []int {
-	var deps []int
-	for j, m := range lista {
-		if !sel[j] {
-			continue
-		}
-		for _, d := range m.Deps {
-			if d == lista[i].ID {
-				deps = append(deps, j)
-			}
-		}
-	}
-	return deps
 }
 
 // Titulos traduz ids de dependência nos títulos dos módulos.

@@ -125,7 +125,17 @@ func rodar() int {
 	}
 	if o.listar {
 		for i, m := range lista {
-			fmt.Printf("%02d  %-18s %s\n", i+1, m.ID, m.Titulo)
+			if i == 0 || m.Grupo != lista[i-1].Grupo {
+				if i > 0 {
+					fmt.Println()
+				}
+				fmt.Println(m.Grupo + ":")
+			}
+			deps := ""
+			if len(m.Deps) > 0 {
+				deps = " (depende de: " + strings.Join(m.Deps, ", ") + ")"
+			}
+			fmt.Printf("  %02d  %-20s %s%s\n", i+1, m.ID, m.Titulo, deps)
 		}
 		return 0
 	}
@@ -243,6 +253,12 @@ func rodarTexto(o opcoes, raiz, nomeSistema string, d *dados.Dados, lista []*mod
 	t.Info("Log desta execução: " + log.Caminho)
 	t.Info("Sistema detectado: " + nomeSistema + " (Omarchy — Arch por baixo, pacman + Chaotic-AUR/yay)")
 
+	if detectado := sistema.DetectarUsuario(); conta == nil && detectado != "" && interativo &&
+		t.SimNaoPadraoSim(fmt.Sprintf("Configurar o ambiente para o usuário '%s'?", detectado)) {
+		if c, err := sistema.BuscarConta(detectado); err == nil {
+			conta = &c
+		}
+	}
 	for conta == nil {
 		nome, err := t.Pergunta("Para qual usuário do sistema devo configurar o ambiente? ")
 		if err != nil {

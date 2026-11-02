@@ -36,10 +36,22 @@ var (
 	estiloCaixa    = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(corCinza).Padding(0, 1)
 )
 
+// Margem em volta da tela: 1 linha em cima e 2 colunas de cada lado.
+const (
+	margemTopo    = 1
+	margemLateral = 4
+)
+
+var estiloMargem = lipgloss.NewStyle().Padding(margemTopo, margemLateral/2, 0, margemLateral/2)
+
 func (m modelo) View() string {
 	if m.modal != nil {
-		return m.viewModal()
+		return estiloMargem.Render(m.viewModal())
 	}
+	return estiloMargem.Render(m.viewTela())
+}
+
+func (m modelo) viewTela() string {
 	var corpo, rodape string
 	switch m.tela {
 	case telaUsuario:
@@ -50,7 +62,7 @@ func (m modelo) View() string {
 		corpo = m.viewModulos()
 		rodape = ajuda("↑/↓", "mover", "espaço", "marcar", "a", "todos", "enter", "revisar", "esc", "voltar", "q", "sair")
 	case telaRevisao:
-		corpo, rodape = m.viewRevisao(), ajuda("enter", "começar", "esc", "voltar", "q", "sair")
+		corpo, rodape = m.viewRevisao(), ajuda("enter/s", "começar", "esc/n", "voltar", "q", "sair")
 	case telaExecucao:
 		corpo = m.viewExecucao()
 		switch {
@@ -59,7 +71,7 @@ func (m modelo) View() string {
 		case m.abortado:
 			rodape = estiloErro.Render("Abortando... (ctrl+c de novo força a saída)")
 		case m.pedirAbortar:
-			rodape = estiloErro.Bold(true).Render("Pressione ctrl+c de novo para abortar a instalação.")
+			rodape = estiloErro.Bold(true).Render("Pressione ctrl+c de novo para abortar a instalação (esc continua).")
 		default:
 			rodape = ajuda("↑/↓ pgup/pgdn", "rolar a saída", "end", "seguir", "ctrl+c", "abortar")
 		}
@@ -81,7 +93,7 @@ func (m modelo) cabecalho() string {
 	if m.cfg.DryRun {
 		partes = append(partes, estiloSelo.Render("DRY-RUN"))
 	}
-	topo := strings.Join(partes, "  ")
+	topo := cortar(strings.Join(partes, "  "), m.largura)
 
 	etapas := []string{"Usuário", "Módulos", "Revisão", "Execução", "Resumo"}
 	atual := map[tela]int{telaUsuario: 0, telaOutroUsuario: 0, telaModulos: 1,
@@ -165,6 +177,25 @@ func (m modelo) viewOutroUsuario() string {
 // Módulos
 // ------------------------------------------------------------------
 
+// linhaSelecao é uma linha do checklist: um módulo (índice em mod) ou o
+// cabeçalho de um grupo (mod < 0).
+type linhaSelecao struct {
+	mod   int
+	grupo string
+}
+
+// linhasSelecao intercala os módulos com um cabeçalho antes de cada grupo.
+func linhasSelecao(lista []*modulos.Modulo) []linhaSelecao {
+	var linhas []linhaSelecao
+	for i, mod := range lista {
+		if i == 0 || mod.Grupo != lista[i-1].Grupo {
+			linhas = append(linhas, linhaSelecao{mod: -1, grupo: mod.Grupo})
+		}
+		linhas = append(linhas, linhaSelecao{mod: i})
+	}
+	return linhas
+}
+
 func (m modelo) viewModulos() string {
 	lista := m.cfg.Modulos
 	titulo := estiloNegrito.Render("Escolha o que executar") + "  " +
@@ -189,9 +220,22 @@ func (m modelo) viewModulos() string {
 	altura = max(3, altura)
 
 	// Janela de rolagem que mantém o cursor visível.
-	topo := max(0, min(m.cursor-altura/2, len(lista)-altura))
+	selecao := linhasSelecao(lista)
+	linhaCursor := 0
+	for j, l := range selecao {
+		if l.mod == m.cursor {
+			linhaCursor = j
+		}
+	}
+	topo := max(0, min(linhaCursor-altura/2, len(selecao)-altura))
+	fim := min(len(selecao), topo+altura)
 	var linhas []string
-	for i := topo; i < min(len(lista), topo+altura); i++ {
+	for _, l := range selecao[topo:fim] {
+		if l.mod < 0 {
+			linhas = append(linhas, cortar(estiloPasso.Render(l.grupo), larguraLista-1))
+			continue
+		}
+		i := l.mod
 		caixa := estiloSutil.Render("[ ]")
 		if m.sel[i] {
 			caixa = estiloDestaque.Render("[✔]")
@@ -205,11 +249,20 @@ func (m modelo) viewModulos() string {
 		linha := fmt.Sprintf("%s%s %s %s", marcador, caixa, estiloSutil.Render(fmt.Sprintf("%02d", i+1)), nome)
 		linhas = append(linhas, cortar(linha, larguraLista-1))
 	}
-	if topo > 0 {
-		linhas[0] = estiloSutil.Render(fmt.Sprintf("   ↑ mais %d", topo))
+	contarModulos := func(trecho []linhaSelecao) int {
+		n := 0
+		for _, l := range trecho {
+			if l.mod >= 0 {
+				n++
+			}
+		}
+		return n
 	}
-	if resto := len(lista) - (topo + altura); resto > 0 {
-		linhas[len(linhas)-1] = estiloSutil.Render(fmt.Sprintf("   ↓ mais %d", resto))
+	if topo > 0 {
+		linhas[0] = estiloSutil.Render(fmt.Sprintf("   ↑ mais %d", contarModulos(selecao[:topo+1])))
+	}
+	if fim < len(selecao) {
+		linhas[len(linhas)-1] = estiloSutil.Render(fmt.Sprintf("   ↓ mais %d", contarModulos(selecao[fim-1:])))
 	}
 	coluna := strings.Join(linhas, "\n")
 
@@ -558,7 +611,11 @@ func (m modelo) viewModal() string {
 	botoes := botao("Sim", m.modalSim, corVerde) + "  " + botao("Não", !m.modalSim, corVermelho)
 
 	partes := append([]string{titulo, ""}, corpo...)
-	partes = append(partes, "", estiloNegrito.Render(c.Pergunta), "", botoes, "", ajuda(teclas...))
+	rodape := ajuda(teclas...)
+	if m.pedirAbortar {
+		rodape = estiloErro.Bold(true).Render("Pressione ctrl+c de novo para abortar a instalação.")
+	}
+	partes = append(partes, "", estiloNegrito.Render(c.Pergunta), "", botoes, "", rodape)
 	caixa := lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(borda).
 		Padding(1, 2).Width(m.larguraModal()).Render(strings.Join(partes, "\n"))
 	return lipgloss.Place(m.largura, m.altura, lipgloss.Center, lipgloss.Center, caixa)

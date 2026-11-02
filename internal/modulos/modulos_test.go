@@ -115,6 +115,18 @@ func TestMarcarEmCadeia(t *testing.T) {
 	}
 }
 
+func TestDesmarcarEmCascata(t *testing.T) {
+	fila := modulosFalsos(nil)
+	sel := []bool{true, true, true, true}
+	removidos := Desmarcar(fila, sel, 0)
+	if !slices.Equal(sel, []bool{false, false, false, true}) {
+		t.Errorf("sel = %v", sel)
+	}
+	if !slices.Equal(removidos, []int{1, 2}) {
+		t.Errorf("removidos = %v", removidos)
+	}
+}
+
 func TestRodarPulaDependentesDaFalha(t *testing.T) {
 	fila := modulosFalsos(map[string]error{"a": errors.New("boom")})
 	obtido := estados(rodarFalsos(context.Background(), fila, false))

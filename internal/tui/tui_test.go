@@ -2,6 +2,7 @@ package tui
 
 import (
 	"errors"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -12,6 +13,7 @@ import (
 	"github.com/vinicgobbi/dots-omarchy/internal/logs"
 	"github.com/vinicgobbi/dots-omarchy/internal/modulos"
 	"github.com/vinicgobbi/dots-omarchy/internal/sistema"
+	"github.com/vinicgobbi/dots-omarchy/internal/ui"
 )
 
 func configTeste(t *testing.T) Config {
@@ -33,6 +35,48 @@ func configTeste(t *testing.T) Config {
 	}
 }
 
+func teclaTipo(m modelo, k tea.KeyType) (modelo, tea.Cmd) {
+	novo, cmd := m.Update(tea.KeyMsg{Type: k})
+	return novo.(modelo), cmd
+}
+
+func letra(m modelo, r rune) modelo {
+	novo, _ := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
+	return novo.(modelo)
+}
+
+func TestLinhasSelecao(t *testing.T) {
+	lista := []*modulos.Modulo{{ID: "a", Grupo: "G1"}, {ID: "b", Grupo: "G1"}, {ID: "c", Grupo: "G2"}}
+	esperado := []linhaSelecao{{mod: -1, grupo: "G1"}, {mod: 0}, {mod: 1}, {mod: -1, grupo: "G2"}, {mod: 2}}
+	if obtido := linhasSelecao(lista); !reflect.DeepEqual(obtido, esperado) {
+		t.Errorf("linhasSelecao = %v, esperado %v", obtido, esperado)
+	}
+}
+
+func TestDesmarcarDependenciaEmCascata(t *testing.T) {
+	cfg := configTeste(t)
+	m := novoModelo(cfg, nil)
+	m = letra(m, ' ') // cursor em "Base", da qual "App" depende
+	if m.marcado("base") || m.marcado("app") {
+		t.Errorf("base = %v, app = %v", m.marcado("base"), m.marcado("app"))
+	}
+	if !strings.Contains(m.nota, "App") {
+		t.Errorf("nota = %q", m.nota)
+	}
+}
+
+func TestAtalhosDaRevisao(t *testing.T) {
+	cfg := configTeste(t)
+	m := novoModelo(cfg, nil)
+	m, _ = teclaTipo(m, tea.KeyEnter)
+	if m.tela != telaRevisao {
+		t.Fatalf("tela = %v", m.tela)
+	}
+	if m = letra(m, 'n'); m.tela != telaModulos {
+		t.Errorf("n na revisão: tela = %v", m.tela)
+	}
+}
+
 func modeloExecutando(t *testing.T) modelo {
 	t.Helper()
 	cfg := configTeste(t)
@@ -45,6 +89,44 @@ func modeloExecutando(t *testing.T) modelo {
 	m.tela, m.inicio = telaExecucao, time.Now()
 	m.cancelar = func() {}
 	return m
+}
+
+func TestAbortarPodeSerDesfeito(t *testing.T) {
+	m := modeloExecutando(t)
+	m, _ = teclaTipo(m, tea.KeyCtrlC)
+	if !m.pedirAbortar {
+		t.Fatal("o primeiro ctrl+c não pediu confirmação")
+	}
+	if !strings.Contains(m.View(), "ctrl+c de novo") {
+		t.Error("o pedido de confirmação não aparece na tela")
+	}
+	// Rolar a saída não desiste do abort; esc desiste.
+	m, _ = teclaTipo(m, tea.KeyUp)
+	if !m.pedirAbortar {
+		t.Error("rolar a saída desistiu do abort")
+	}
+	m, _ = teclaTipo(m, tea.KeyEsc)
+	if m.pedirAbortar {
+		t.Error("esc não desistiu do abort")
+	}
+}
+
+func TestCtrlCNaConfirmacaoAparece(t *testing.T) {
+	m := modeloExecutando(t)
+	resposta := make(chan bool, 1)
+	novo, _ := m.Update(confirmarMsg{ui.Confirmacao{Titulo: "Temas", Pergunta: "Instalar?"}, resposta})
+	m = novo.(modelo)
+	m, _ = teclaTipo(m, tea.KeyCtrlC)
+	if !strings.Contains(m.View(), "ctrl+c de novo") {
+		t.Error("o primeiro ctrl+c não mostra aviso na janela de confirmação")
+	}
+	m, _ = teclaTipo(m, tea.KeyCtrlC)
+	if !m.abortado {
+		t.Error("o segundo ctrl+c não abortou")
+	}
+	if <-resposta {
+		t.Error("o abort deveria responder não à confirmação")
+	}
 }
 
 func TestEstadosNoResumo(t *testing.T) {
@@ -91,5 +173,59 @@ func TestTelasCabemNoTerminal(t *testing.T) {
 				t.Errorf("%dx%d, tela %v: %d linhas", tamanho.l, tamanho.a, tl, altura)
 			}
 		}
+	}
+}
+
+func TestListaMostraOsGrupos(t *testing.T) {
+	cfg := configTeste(t)
+	novo, _ := novoModelo(cfg, nil).Update(tea.WindowSizeMsg{Width: 120, Height: 40})
+	tela := novo.(modelo).View()
+	for _, esperado := range []string{"G1", "G2", "Base", "Temas"} {
+		if !strings.Contains(tela, esperado) {
+			t.Errorf("a lista não mostra %q:\n%s", esperado, tela)
+		}
+	}
+}
+
+// As linhas vão em lote, sem passar à frente da mensagem seguinte.
+func TestPonteMantemAOrdem(t *testing.T) {
+	log, err := logs.Iniciar(t.TempDir(), "teste")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer log.Fechar()
+	var recebidas []tea.Msg
+	b := novaPonte(log)
+	b.despachar = func(msg tea.Msg) { recebidas = append(recebidas, msg) }
+
+	b.Info("um")
+	b.Aviso("dois")
+	b.enviar(fimMsg{})
+	if len(recebidas) != 2 {
+		t.Fatalf("recebidas = %v", recebidas)
+	}
+	lote, ok := recebidas[0].(loteMsg)
+	if !ok || len(lote) != 2 || lote[0].texto != "um" || lote[1].texto != "dois" {
+		t.Errorf("lote = %v", recebidas[0])
+	}
+	if _, ok := recebidas[1].(fimMsg); !ok {
+		t.Errorf("segunda mensagem = %v", recebidas[1])
+	}
+}
+
+func TestPonteDespachaSozinha(t *testing.T) {
+	log, err := logs.Iniciar(t.TempDir(), "teste")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer log.Fechar()
+	chegou := make(chan tea.Msg, 1)
+	b := novaPonte(log)
+	b.despachar = func(msg tea.Msg) { chegou <- msg }
+	b.Info("um")
+	select {
+	case <-chegou:
+	case <-time.After(2 * time.Second):
+		t.Fatal("o lote não foi despachado")
 	}
 }

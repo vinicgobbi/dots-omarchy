@@ -113,6 +113,19 @@ func (t *Texto) SimNao(pergunta string) bool {
 	return false
 }
 
+// SimNaoPadraoSim é o SimNao em que Enter vazio conta como "sim".
+func (t *Texto) SimNaoPadraoSim(pergunta string) bool {
+	resposta, err := t.Pergunta(pergunta + " [S/n]: ")
+	if err != nil {
+		return false
+	}
+	switch resposta {
+	case "", "s", "S", "y", "Y":
+		return true
+	}
+	return false
+}
+
 func (t *Texto) Confirmar(c Confirmacao) bool {
 	cor := Negrito
 	if c.Perigo {

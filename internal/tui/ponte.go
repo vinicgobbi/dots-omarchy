@@ -6,6 +6,7 @@ import (
 	"io"
 	"strings"
 	"sync"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/x/ansi"
@@ -14,13 +15,24 @@ import (
 	"github.com/vinicgobbi/dots-omarchy/internal/ui"
 )
 
+// intervaloLote é o tempo máximo que uma linha espera para ir à tela. Uma saída
+// rápida (pacman, yay) redesenha a tela no máximo uma vez nesse intervalo, em
+// vez de uma vez por linha.
+const intervaloLote = 50 * time.Millisecond
+
 // ponte implementa ui.UI para os módulos, que rodam numa goroutine à parte:
 // cada mensagem vira um tea.Msg para a tela, e as perguntas esperam a
 // resposta do usuário por um canal.
 type ponte struct {
-	p     *tea.Program
-	log   *logs.Log
-	saida *escritorLinhas
+	despachar func(tea.Msg)
+	log       *logs.Log
+	saida     *escritorLinhas
+
+	// envio mantém a ordem: um lote nunca passa à frente da mensagem seguinte.
+	envio    sync.Mutex
+	mu       sync.Mutex
+	lote     []linha
+	agendado bool
 }
 
 func novaPonte(log *logs.Log) *ponte {
@@ -29,12 +41,44 @@ func novaPonte(log *logs.Log) *ponte {
 	return b
 }
 
-func (b *ponte) enviar(msg tea.Msg) { b.p.Send(msg) }
+// enviar manda uma mensagem à tela, depois das linhas que estiverem na fila.
+func (b *ponte) enviar(msg tea.Msg) {
+	b.envio.Lock()
+	defer b.envio.Unlock()
+	b.despacharLote()
+	b.despachar(msg)
+}
+
+// enfileirar guarda a linha para o próximo lote.
+func (b *ponte) enfileirar(l linha) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.lote = append(b.lote, l)
+	if !b.agendado {
+		b.agendado = true
+		time.AfterFunc(intervaloLote, func() {
+			b.envio.Lock()
+			defer b.envio.Unlock()
+			b.despacharLote()
+		})
+	}
+}
+
+// despacharLote exige b.envio travado.
+func (b *ponte) despacharLote() {
+	b.mu.Lock()
+	lote := b.lote
+	b.lote, b.agendado = nil, false
+	b.mu.Unlock()
+	if len(lote) > 0 {
+		b.despachar(loteMsg(lote))
+	}
+}
 
 func (b *ponte) mensagem(tipo tipoLinha, nivel, prefixo, msg string) {
 	b.log.Linha(nivel, msg)
 	fmt.Fprintf(b.log, "%s %s\n", prefixo, msg)
-	b.enviar(linhaMsg{tipo, msg})
+	b.enfileirar(linha{tipo, msg})
 }
 
 func (b *ponte) Info(msg string)    { b.mensagem(linhaInfo, "INFO", "[*]", msg) }
@@ -43,7 +87,7 @@ func (b *ponte) Aviso(msg string)   { b.mensagem(linhaAviso, "AVISO", "[!]", msg
 
 func (b *ponte) DryRun(texto string) {
 	fmt.Fprintf(b.log, "[dry-run] %s\n", texto)
-	b.enviar(linhaMsg{linhaDryRun, texto})
+	b.enfileirar(linha{linhaDryRun, texto})
 }
 
 func (b *ponte) Saida() io.Writer { return b.saida }
@@ -92,8 +136,8 @@ func (e *escritorLinhas) Flush() {
 	e.pendente = nil
 }
 
-func (e *escritorLinhas) emitir(linha []byte) {
-	e.ponte.enviar(linhaMsg{linhaSaida, limparLinha(string(linha))})
+func (e *escritorLinhas) emitir(texto []byte) {
+	e.ponte.enfileirar(linha{linhaSaida, limparLinha(string(texto))})
 }
 
 // limparLinha deixa a linha segura para desenhar: fica só o que veio depois

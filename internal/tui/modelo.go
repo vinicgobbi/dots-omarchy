@@ -6,7 +6,6 @@ package tui
 import (
 	"context"
 	"fmt"
-	"os"
 	"strings"
 	"time"
 
@@ -74,7 +73,7 @@ type linha struct {
 
 // Mensagens da goroutine que roda os módulos.
 type (
-	linhaMsg        linha
+	loteMsg         []linha
 	moduloInicioMsg struct{ n int }
 	moduloFimMsg    struct {
 		n int
@@ -156,10 +155,7 @@ func novoModelo(cfg Config, b *ponte) modelo {
 	m := modelo{
 		cfg: cfg, ponte: b, largura: 80, altura: 24,
 		entrada: entrada, spinner: sp, sel: sel, notas: notas,
-		voce: os.Getenv("SUDO_USER"),
-	}
-	if m.voce == "" {
-		m.voce = os.Getenv("USER")
+		voce: sistema.DetectarUsuario(),
 	}
 	m.contas = sistema.ContasHumanas()
 	for i, c := range m.contas {
@@ -174,6 +170,15 @@ func novoModelo(cfg Config, b *ponte) modelo {
 	return m
 }
 
+func (m modelo) marcado(id string) bool {
+	for i, mod := range m.cfg.Modulos {
+		if mod.ID == id {
+			return m.sel[i]
+		}
+	}
+	return false
+}
+
 func (m modelo) telaAposUsuario() tela {
 	if m.cfg.PularMenu {
 		return telaRevisao
@@ -186,7 +191,8 @@ func (m modelo) Init() tea.Cmd { return m.spinner.Tick }
 func (m modelo) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		m.largura, m.altura = msg.Width, msg.Height
+		// Descontando a margem aplicada em View.
+		m.largura, m.altura = max(20, msg.Width-margemLateral), max(10, msg.Height-margemTopo)
 		return m, nil
 
 	case spinner.TickMsg:
@@ -194,8 +200,10 @@ func (m modelo) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.spinner, cmd = m.spinner.Update(msg)
 		return m, cmd
 
-	case linhaMsg:
-		m.adicionar(linha(msg))
+	case loteMsg:
+		for _, l := range msg {
+			m.adicionar(l)
+		}
 		return m, nil
 
 	case moduloInicioMsg:
@@ -311,6 +319,7 @@ func (m modelo) ctrlC() (tea.Model, tea.Cmd) {
 }
 
 func (m modelo) teclaModal(k tea.KeyMsg) modelo {
+	m.pedirAbortar = false
 	responder := func(sim bool) modelo {
 		m.modal.resposta <- sim
 		m.modal = nil
@@ -434,25 +443,21 @@ func (m modelo) teclaModulos(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 // devolve a explicação do que mudou além dele.
 func (m modelo) alternar(i int) string {
 	lista := m.cfg.Modulos
-	if m.sel[i] {
-		if deps := modulos.Dependentes(lista, m.sel, i); len(deps) > 0 {
-			var nomes []string
-			for _, j := range deps {
-				nomes = append(nomes, lista[j].Titulo)
-			}
-			return fmt.Sprintf("'%s' é necessário para: %s. Desmarque esses antes.",
-				lista[i].Titulo, strings.Join(nomes, ", "))
-		}
-		m.sel[i] = false
-		return ""
-	}
-	puxados := modulos.Marcar(lista, m.sel, i)
-	if len(puxados) == 0 {
-		return ""
-	}
 	var nomes []string
-	for _, p := range puxados {
+	if m.sel[i] {
+		for _, j := range modulos.Desmarcar(lista, m.sel, i) {
+			nomes = append(nomes, lista[j].Titulo)
+		}
+		if len(nomes) == 0 {
+			return ""
+		}
+		return "Também desmarcado (depende deste): " + strings.Join(nomes, ", ") + "."
+	}
+	for _, p := range modulos.Marcar(lista, m.sel, i) {
 		nomes = append(nomes, lista[p.Dep].Titulo)
+	}
+	if len(nomes) == 0 {
+		return ""
 	}
 	return "Dependência marcada junto: " + strings.Join(nomes, ", ") + "."
 }
@@ -469,9 +474,9 @@ func (m modelo) selecionados() int {
 
 func (m modelo) teclaRevisao(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch k.String() {
-	case "enter":
+	case "enter", "s", "S", "y", "Y":
 		return m.iniciar()
-	case "esc":
+	case "esc", "n", "N", "backspace":
 		m.tela = telaModulos
 	case "q":
 		m.abortado = true
@@ -481,7 +486,6 @@ func (m modelo) teclaRevisao(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 }
 
 func (m modelo) teclaExecucao(k tea.KeyMsg) (tea.Model, tea.Cmd) {
-	m.pedirAbortar = false
 	maxRolagem := max(0, len(m.linhas)-1)
 	switch k.String() {
 	case "up", "k":
@@ -496,7 +500,14 @@ func (m modelo) teclaExecucao(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.rolagem = maxRolagem
 	case "end", "G", "f":
 		m.rolagem = 0
-	case "enter", "esc", "r":
+	case "n":
+		m.pedirAbortar = false
+	case "esc":
+		m.pedirAbortar = false
+		if m.terminou {
+			m.tela = telaResumo
+		}
+	case "enter", "r":
 		if m.terminou {
 			m.tela = telaResumo
 		}
@@ -504,6 +515,7 @@ func (m modelo) teclaExecucao(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if m.terminou {
 			return m, tea.Quit
 		}
+		return m.ctrlC()
 	}
 	return m, nil
 }
@@ -583,7 +595,7 @@ func (m modelo) resultado() Resultado {
 func Rodar(cfg Config) (Resultado, error) {
 	b := novaPonte(cfg.Log)
 	p := tea.NewProgram(novoModelo(cfg, b), tea.WithAltScreen())
-	b.p = p
+	b.despachar = p.Send
 	final, err := p.Run()
 	if err != nil {
 		return Resultado{}, err
