@@ -91,6 +91,63 @@ func TestTelaTema(t *testing.T) {
 	}
 }
 
+func TestTelaAtualizacao(t *testing.T) {
+	base := configTeste(t)
+	base.TemaEscolhido = true
+	base.VersaoNova = "v2.0.0"
+	base.ComandoReexecucao = "sudo x"
+	base.AplicarAtualizacao = func() error { return nil }
+
+	// Ignorar: segue para a tela que viria sem a atualização.
+	m := novoModelo(base, nil)
+	if m.tela != telaAtualizacao {
+		t.Fatalf("tela inicial = %v, esperado a de atualização", m.tela)
+	}
+	m, _ = teclaTipo(m, tea.KeyDown)
+	m, _ = teclaTipo(m, tea.KeyEnter)
+	if m.tela != telaModulos || m.atualizado {
+		t.Errorf("depois de ignorar: tela %v, atualizado %v", m.tela, m.atualizado)
+	}
+
+	// Atualizar com sucesso.
+	m = novoModelo(base, nil)
+	m, cmd := teclaTipo(m, tea.KeyEnter)
+	if !m.atualizando || cmd == nil {
+		t.Fatal("enter em 'Atualizar agora' não iniciou a atualização")
+	}
+	// ctrl+c não pode interromper no meio.
+	if _, cmd := teclaTipo(m, tea.KeyCtrlC); cmd != nil {
+		t.Error("ctrl+c interrompeu a atualização")
+	}
+	novo, _ := m.Update(cmd())
+	if m = novo.(modelo); !m.atualizado || !m.resultado().Atualizado {
+		t.Error("atualização bem-sucedida não foi registrada")
+	}
+	if !strings.Contains(m.View(), "sudo x") {
+		t.Error("a tela não mostra o comando para executar de novo")
+	}
+
+	// Falha: mostra o erro e continua permitindo ignorar.
+	falha := base
+	falha.AplicarAtualizacao = func() error { return errors.New("sem rede") }
+	m = novoModelo(falha, nil)
+	m, cmd = teclaTipo(m, tea.KeyEnter)
+	novo, _ = m.Update(cmd())
+	if m = novo.(modelo); m.atualizado || m.erroAtualizacao != "sem rede" {
+		t.Errorf("falha: atualizado %v, erro %q", m.atualizado, m.erroAtualizacao)
+	}
+
+	// Dry-run: sem tela, só o aviso no topo.
+	dry := base
+	dry.DryRun = true
+	if m = novoModelo(dry, nil); m.tela == telaAtualizacao {
+		t.Error("dry-run não deveria abrir a tela de atualização")
+	}
+	if !strings.Contains(m.View(), "nova versão: v2.0.0") {
+		t.Error("dry-run não avisa da versão nova no topo")
+	}
+}
+
 func TestDesmarcarDependenciaEmCascata(t *testing.T) {
 	cfg := configTeste(t)
 	cfg.TemaEscolhido = true

@@ -38,14 +38,21 @@ type Config struct {
 	// não pergunta.
 	TemaAtivo     string
 	TemaEscolhido bool
+	// VersaoNova é a release mais nova disponível (vazio = nenhuma). Fora do
+	// dry-run, a primeira tela oferece rodar AplicarAtualizacao; depois de
+	// atualizar, mostra ComandoReexecucao e sai. No dry-run, só avisa no topo.
+	VersaoNova         string
+	AplicarAtualizacao func() error
+	ComandoReexecucao  string
 }
 
 // Resultado é o que aconteceu na sessão, para o main.
 type Resultado struct {
-	Iniciado bool
-	Abortado bool
-	Modulos  []modulos.Resultado
-	Duracao  time.Duration
+	Iniciado   bool
+	Abortado   bool
+	Atualizado bool
+	Modulos    []modulos.Resultado
+	Duracao    time.Duration
 }
 
 type tela int
@@ -53,6 +60,7 @@ type tela int
 const (
 	telaUsuario tela = iota
 	telaOutroUsuario
+	telaAtualizacao
 	telaTema
 	telaModulos
 	telaRevisao
@@ -100,6 +108,13 @@ type modelo struct {
 	largura int
 	altura  int
 	tela    tela
+
+	// Atualização
+	cursorAtualizacao int // 0 = atualizar, 1 = ignorar
+	atualizando       bool
+	atualizado        bool
+	erroAtualizacao   string
+	depoisAtualizacao tela
 
 	// Usuário
 	contas      []sistema.Conta
@@ -185,6 +200,9 @@ func novoModelo(cfg Config, b *ponte) modelo {
 		m.conta, m.contaDaFlag = *cfg.Conta, true
 		m.tela = m.telaAposUsuario()
 	}
+	if cfg.VersaoNova != "" && !cfg.DryRun && cfg.AplicarAtualizacao != nil {
+		m.depoisAtualizacao, m.tela = m.tela, telaAtualizacao
+	}
 	return m
 }
 
@@ -230,6 +248,15 @@ func (m modelo) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		var cmd tea.Cmd
 		m.spinner, cmd = m.spinner.Update(msg)
 		return m, cmd
+
+	case atualizadoMsg:
+		m.atualizando = false
+		if msg.err != nil {
+			m.erroAtualizacao = msg.err.Error()
+		} else {
+			m.atualizado = true
+		}
+		return m, nil
 
 	case loteMsg:
 		for _, l := range msg {
@@ -294,6 +321,10 @@ func (m *modelo) adicionar(l linha) {
 }
 
 func (m modelo) tecla(k tea.KeyMsg) (tea.Model, tea.Cmd) {
+	if m.atualizando {
+		// Interromper no meio deixaria o pacote pela metade.
+		return m, nil
+	}
 	if k.String() == "ctrl+c" {
 		return m.ctrlC()
 	}
@@ -301,6 +332,8 @@ func (m modelo) tecla(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.teclaModal(k), nil
 	}
 	switch m.tela {
+	case telaAtualizacao:
+		return m.teclaAtualizacao(k)
 	case telaUsuario:
 		return m.teclaUsuario(k)
 	case telaOutroUsuario:
@@ -657,7 +690,7 @@ func executar(ctx context.Context, s *sistema.Sistema, fila []*modulos.Modulo, f
 }
 
 func (m modelo) resultado() Resultado {
-	return Resultado{Iniciado: m.fila != nil, Abortado: m.abortado,
+	return Resultado{Iniciado: m.fila != nil, Abortado: m.abortado, Atualizado: m.atualizado,
 		Modulos: m.resultados, Duracao: m.duracao}
 }
 

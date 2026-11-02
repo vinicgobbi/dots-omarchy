@@ -16,6 +16,7 @@ import (
 
 	"github.com/charmbracelet/x/term"
 
+	"github.com/vinicgobbi/dots-omarchy/internal/atualizacao"
 	"github.com/vinicgobbi/dots-omarchy/internal/dados"
 	"github.com/vinicgobbi/dots-omarchy/internal/logs"
 	"github.com/vinicgobbi/dots-omarchy/internal/modulos"
@@ -28,17 +29,18 @@ import (
 var versao = "dev"
 
 type opcoes struct {
-	dryRun   bool
-	modulos  string
-	pular    string
-	usuario  string
-	tema     string
-	semTUI   bool
-	sim      bool
-	failFast bool
-	listar   bool
-	versao   bool
-	raiz     string
+	dryRun         bool
+	modulos        string
+	pular          string
+	usuario        string
+	tema           string
+	semTUI         bool
+	sim            bool
+	failFast       bool
+	semAtualizacao bool
+	listar         bool
+	versao         bool
+	raiz           string
 }
 
 func argumentos() opcoes {
@@ -51,6 +53,7 @@ func argumentos() opcoes {
 	flag.BoolVar(&o.semTUI, "sem-tui", false, "usa a saída em texto corrido em vez da interface interativa")
 	flag.BoolVar(&o.sim, "yes", false, "não pede confirmação para começar, no modo texto (plugins e temas de terceiros ainda perguntam)")
 	flag.BoolVar(&o.failFast, "fail-fast", false, "para tudo no primeiro módulo que falhar")
+	flag.BoolVar(&o.semAtualizacao, "sem-atualizacao", false, "não verifica se há uma versão mais nova do post-omarchy")
 	flag.BoolVar(&o.listar, "listar", false, "lista os módulos e seus ids e sai")
 	flag.BoolVar(&o.versao, "versao", false, "mostra a versão e sai")
 	flag.StringVar(&o.raiz, "raiz", "", "pasta do projeto (com data/ e dots/); padrão: a do executável")
@@ -174,6 +177,33 @@ func resolverTema(temas []string, valor string) (url string, escolhido bool, err
 	return "", false, fmt.Errorf("tema %q não encontrado em data/themes.json", valor)
 }
 
+func caminhoExecutavel() (string, error) {
+	exe, err := os.Executable()
+	if err != nil {
+		return "", err
+	}
+	return filepath.EvalSymlinks(exe)
+}
+
+// verificarAtualizacao consulta a última release (com prazo curto, para não
+// atrasar o início sem rede). Falhas só viram aviso.
+func verificarAtualizacao() *atualizacao.Release {
+	ctx, cancelar := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancelar()
+	r, err := atualizacao.Verificar(ctx, versao)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%s[!] Não foi possível verificar se há versão nova: %v%s\n", ui.Azul, err, ui.NC)
+		return nil
+	}
+	return r
+}
+
+// comandoReexecucao monta o comando para executar de novo com as mesmas opções,
+// depois de uma atualização.
+func comandoReexecucao(exe string) string {
+	return "sudo " + sistema.Juntar(append([]string{exe}, os.Args[1:]...)...)
+}
+
 func rodar() int {
 	o := argumentos()
 	lista := modulos.Todos()
@@ -268,15 +298,24 @@ func rodar() int {
 	defer log.Fechar()
 	log.Linha("INFO", "Sistema detectado: "+nomeSistema)
 
+	var nova *atualizacao.Release
+	if !o.semAtualizacao {
+		nova = verificarAtualizacao()
+	}
+
 	if terminal(os.Stdin) && terminal(os.Stdout) && !o.semTUI {
 		cfg := tui.Config{
 			Versao: versao, Raiz: raiz, Dados: d, DryRun: o.dryRun, Log: log, NomeSistema: nomeSistema,
 			Modulos: lista, Selecao: selecao, PularMenu: o.modulos != "", Conta: conta, Notas: notas,
 			FalhaRapida: o.failFast, Trabalho: trabalho, TemaAtivo: temaAtivo, TemaEscolhido: temaEscolhido,
 		}
+		if exe, err := caminhoExecutavel(); err == nil && nova != nil {
+			cfg.VersaoNova, cfg.ComandoReexecucao = nova.Tag, comandoReexecucao(exe)
+			cfg.AplicarAtualizacao = func() error { return atualizacao.Aplicar(context.Background(), nova, exe) }
+		}
 		return rodarTUI(cfg)
 	}
-	return rodarTexto(o, raiz, nomeSistema, d, lista, selecao, notas, conta, log, trabalho, temaAtivo, temaEscolhido)
+	return rodarTexto(o, raiz, nomeSistema, d, lista, selecao, notas, conta, log, nova, trabalho, temaAtivo, temaEscolhido)
 }
 
 // codigoSaida: 130 se algo foi cancelado, 1 se algo falhou.
@@ -298,6 +337,11 @@ func rodarTUI(cfg tui.Config) int {
 	if err != nil {
 		return falhar("Erro na interface: " + err.Error())
 	}
+	if r.Atualizado {
+		fmt.Printf("post-omarchy atualizado para %s. Execute de novo para usar a versão nova:\n  %s\n",
+			cfg.VersaoNova, cfg.ComandoReexecucao)
+		return 0
+	}
 	if !r.Iniciado {
 		fmt.Println("Nada foi executado.")
 		return 0
@@ -306,6 +350,35 @@ func rodarTUI(cfg tui.Config) int {
 	// A TUI some ao sair; deixa o resumo no terminal.
 	fmt.Println(tui.Resumo(r, cfg.DryRun, cfg.Log.Caminho, cfg.Log.CaminhoBruto))
 	return codigoSaida(r.Modulos)
+}
+
+// oferecerAtualizacao pergunta (modo texto) se atualiza para a versão nova.
+// Devolve sair=true quando a execução deve parar (atualizou ou falhou).
+func oferecerAtualizacao(o opcoes, t *ui.Texto, r *atualizacao.Release, interativo bool) (codigo int, sair bool) {
+	novidade := fmt.Sprintf("Nova versão disponível: %s (você está na %s).", r.Tag, versao)
+	switch {
+	case o.dryRun:
+		t.Info(novidade + " Execute sem --dry-run para atualizar.")
+		return 0, false
+	case !interativo || o.sim:
+		t.Aviso(novidade + " Execute de forma interativa para atualizar.")
+		return 0, false
+	case !t.SimNaoPadraoSim(novidade + " Atualizar agora (depois é preciso executar de novo)?"):
+		return 0, false
+	}
+	exe, err := caminhoExecutavel()
+	if err != nil {
+		t.Erro("Falha ao localizar o executável: " + err.Error())
+		return 1, true
+	}
+	t.Info("Baixando e conferindo " + r.Tag + "...")
+	if err := atualizacao.Aplicar(context.Background(), r, exe); err != nil {
+		t.Erro("Falha ao atualizar: " + err.Error())
+		return 1, true
+	}
+	t.Sucesso(fmt.Sprintf("post-omarchy atualizado para %s. Execute de novo para usar a versão nova:", r.Tag))
+	fmt.Println("  " + comandoReexecucao(exe))
+	return 0, true
 }
 
 // perguntarTema pergunta (modo texto) qual tema fica ativo.
@@ -330,13 +403,19 @@ func perguntarTema(t *ui.Texto, temas []string) string {
 // rodarTexto é o fluxo sem TUI: sem terminal interativo (ou com --sem-tui),
 // roda todos os módulos ou os de --modulos.
 func rodarTexto(o opcoes, raiz, nomeSistema string, d *dados.Dados, lista []*modulos.Modulo,
-	selecao []bool, notas []string, conta *sistema.Conta, log *logs.Log,
+	selecao []bool, notas []string, conta *sistema.Conta, log *logs.Log, nova *atualizacao.Release,
 	trabalho, temaAtivo string, temaEscolhido bool) int {
 	interativo := terminal(os.Stdin)
 	t := ui.NovoTexto(log, interativo)
 	t.Banner()
 	t.Info("Log desta execução: " + log.Caminho)
 	t.Info("Sistema detectado: " + nomeSistema + " (Omarchy — Arch por baixo, pacman + Chaotic-AUR/yay)")
+
+	if nova != nil {
+		if codigo, sair := oferecerAtualizacao(o, t, nova, interativo); sair {
+			return codigo
+		}
+	}
 
 	if detectado := sistema.DetectarUsuario(); conta == nil && detectado != "" && interativo &&
 		t.SimNaoPadraoSim(fmt.Sprintf("Configurar o ambiente para o usuário '%s'?", detectado)) {

@@ -54,6 +54,15 @@ func (m modelo) View() string {
 func (m modelo) viewTela() string {
 	var corpo, rodape string
 	switch m.tela {
+	case telaAtualizacao:
+		corpo = m.viewAtualizacao()
+		switch {
+		case m.atualizando:
+		case m.atualizado:
+			rodape = ajuda("enter", "sair")
+		default:
+			rodape = ajuda("↑/↓", "mover", "enter", "escolher", "q", "sair")
+		}
 	case telaTema:
 		corpo, rodape = m.viewTema(), ajuda("↑/↓", "mover", "enter", "escolher", "esc", "voltar", "q", "sair")
 	case telaUsuario:
@@ -94,11 +103,14 @@ func (m modelo) cabecalho() string {
 	}
 	if m.cfg.DryRun {
 		partes = append(partes, estiloSelo.Render("DRY-RUN"))
+		if m.cfg.VersaoNova != "" {
+			partes = append(partes, estiloInfo.Render("nova versão: "+m.cfg.VersaoNova))
+		}
 	}
 	topo := cortar(strings.Join(partes, "  "), m.largura)
 
 	etapas := []string{"Usuário", "Módulos", "Revisão", "Execução", "Resumo"}
-	atual := map[tela]int{telaUsuario: 0, telaOutroUsuario: 0, telaTema: 1, telaModulos: 1,
+	atual := map[tela]int{telaAtualizacao: 0, telaUsuario: 0, telaOutroUsuario: 0, telaTema: 1, telaModulos: 1,
 		telaRevisao: 2, telaExecucao: 3, telaResumo: 4}[m.tela]
 	var trilha []string
 	for i, e := range etapas {
