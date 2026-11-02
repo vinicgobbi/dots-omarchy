@@ -1,3 +1,30 @@
+## v0.4.0 (2026-11-02)
+
+### BREAKING CHANGE
+
+- os ids de módulo de --modulos mudaram: pacotes_base,
+chrome_gcm, php_extensoes, rust_tools, ambiente_usuario e vscode_nautilus
+deram lugar a shell, chrome, git_gcm, docker, vscode, node, php_sqlserver,
+rust e nautilus.
+
+### Feat
+
+- verifica se há versão nova e oferece atualizar ao iniciar
+- adiciona a escolha do tema ativo e as flags --pular e --yes
+- **tui**: agrupa os módulos e melhora a navegação
+- continua a execução depois de um módulo falhar
+- **modulos**: adiciona ferramentas, Go, Ruby, deploy-dev e outros apps
+- **sistema**: adiciona downloads conferidos e diretório temporário
+
+### Fix
+
+- **logs**: restringe os logs ao dono
+- corrige a referência ao post-install e textos antigos
+
+### Refactor
+
+- **modulos**: reorganiza em grupos autocontidos e endurece a segurança
+
 ## v0.3.0 (2026-10-10)
 
 ### Feat
