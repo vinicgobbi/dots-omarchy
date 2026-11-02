@@ -142,3 +142,24 @@ func Selecionar(lista []*Modulo, ids []string) ([]bool, error) {
 	}
 	return sel, nil
 }
+
+// Pular tira os ids (do --pular) da seleção e devolve uma nota para cada
+// módulo que saiu junto por depender deles.
+func Pular(lista []*Modulo, sel []bool, ids []string) ([]string, error) {
+	var notas, desconhecidos []string
+	for _, id := range ids {
+		i := indice(lista, id)
+		if i < 0 {
+			desconhecidos = append(desconhecidos, id)
+			continue
+		}
+		for _, j := range Desmarcar(lista, sel, i) {
+			notas = append(notas, fmt.Sprintf("'%s' depende de '%s': também não será executado.",
+				lista[j].Titulo, lista[i].Titulo))
+		}
+	}
+	if len(desconhecidos) > 0 {
+		return nil, fmt.Errorf("módulos desconhecidos: %v", desconhecidos)
+	}
+	return notas, nil
+}

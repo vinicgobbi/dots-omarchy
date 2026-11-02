@@ -53,8 +53,47 @@ func TestLinhasSelecao(t *testing.T) {
 	}
 }
 
+func TestTelaTema(t *testing.T) {
+	cfg := configTeste(t)
+	m := novoModelo(cfg, nil)
+	if m.tela != telaTema {
+		t.Fatalf("tela = %v, esperado a de tema", m.tela)
+	}
+	if m.cursorTema != 1 {
+		t.Errorf("o cursor deveria começar no último tema, veio %d", m.cursorTema)
+	}
+
+	// Escolher um tema segue para os módulos, com ele ativo.
+	m, _ = teclaTipo(m, tea.KeyUp)
+	m, _ = teclaTipo(m, tea.KeyEnter)
+	if m.tela != telaModulos || m.cfg.TemaAtivo != cfg.Dados.Themes[0] {
+		t.Errorf("tela = %v, tema = %q", m.tela, m.cfg.TemaAtivo)
+	}
+
+	// esc nos módulos volta à pergunta do tema.
+	m, _ = teclaTipo(m, tea.KeyEsc)
+	if m.tela != telaTema {
+		t.Errorf("esc nos módulos: tela = %v", m.tela)
+	}
+
+	// "Não instalar" desmarca o módulo.
+	m = novoModelo(cfg, nil)
+	m, _ = teclaTipo(m, tea.KeyDown)
+	m, _ = teclaTipo(m, tea.KeyEnter)
+	if m.marcado("temas_omarchy") || m.cfg.TemaAtivo != "" || m.tela != telaModulos {
+		t.Errorf("marcado = %v, tema = %q, tela = %v", m.marcado("temas_omarchy"), m.cfg.TemaAtivo, m.tela)
+	}
+
+	// Com --tema, não pergunta.
+	cfg.TemaEscolhido = true
+	if m = novoModelo(cfg, nil); m.tela != telaModulos {
+		t.Errorf("com --tema: tela = %v", m.tela)
+	}
+}
+
 func TestDesmarcarDependenciaEmCascata(t *testing.T) {
 	cfg := configTeste(t)
+	cfg.TemaEscolhido = true
 	m := novoModelo(cfg, nil)
 	m = letra(m, ' ') // cursor em "Base", da qual "App" depende
 	if m.marcado("base") || m.marcado("app") {
@@ -67,6 +106,7 @@ func TestDesmarcarDependenciaEmCascata(t *testing.T) {
 
 func TestAtalhosDaRevisao(t *testing.T) {
 	cfg := configTeste(t)
+	cfg.TemaEscolhido = true
 	m := novoModelo(cfg, nil)
 	m, _ = teclaTipo(m, tea.KeyEnter)
 	if m.tela != telaRevisao {
@@ -80,6 +120,7 @@ func TestAtalhosDaRevisao(t *testing.T) {
 func modeloExecutando(t *testing.T) modelo {
 	t.Helper()
 	cfg := configTeste(t)
+	cfg.TemaEscolhido = true
 	m := novoModelo(cfg, nil)
 	m.fila = cfg.Modulos
 	m.resultados = make([]modulos.Resultado, len(m.fila))
@@ -167,7 +208,7 @@ func TestTelasCabemNoTerminal(t *testing.T) {
 		m := novoModelo(cfg, nil)
 		novo, _ := m.Update(tea.WindowSizeMsg{Width: tamanho.l, Height: tamanho.a})
 		m = novo.(modelo)
-		for _, tl := range []tela{telaModulos, telaRevisao} {
+		for _, tl := range []tela{telaTema, telaModulos, telaRevisao} {
 			m.tela = tl
 			if altura := strings.Count(m.View(), "\n") + 1; altura > tamanho.a {
 				t.Errorf("%dx%d, tela %v: %d linhas", tamanho.l, tamanho.a, tl, altura)
@@ -178,6 +219,7 @@ func TestTelasCabemNoTerminal(t *testing.T) {
 
 func TestListaMostraOsGrupos(t *testing.T) {
 	cfg := configTeste(t)
+	cfg.TemaEscolhido = true
 	novo, _ := novoModelo(cfg, nil).Update(tea.WindowSizeMsg{Width: 120, Height: 40})
 	tela := novo.(modelo).View()
 	for _, esperado := range []string{"G1", "G2", "Base", "Temas"} {

@@ -127,6 +127,21 @@ func TestDesmarcarEmCascata(t *testing.T) {
 	}
 }
 
+func TestPular(t *testing.T) {
+	fila := modulosFalsos(nil)
+	sel := []bool{true, true, true, true}
+	notas, err := Pular(fila, sel, []string{"b"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Equal(sel, []bool{true, false, false, true}) || len(notas) != 1 {
+		t.Errorf("sel = %v, notas = %v", sel, notas)
+	}
+	if _, err := Pular(fila, sel, []string{"nao-existe"}); err == nil {
+		t.Error("Pular aceitou um id desconhecido")
+	}
+}
+
 func TestRodarPulaDependentesDaFalha(t *testing.T) {
 	fila := modulosFalsos(map[string]error{"a": errors.New("boom")})
 	obtido := estados(rodarFalsos(context.Background(), fila, false))
@@ -177,6 +192,37 @@ func TestRodarPanicViraFalha(t *testing.T) {
 	r := rodarFalsos(context.Background(), fila, false)
 	if r[3].Estado != Falhou || !strings.Contains(r[3].Erro.Error(), "bug") {
 		t.Errorf("resultado = %+v", r[3])
+	}
+}
+
+func TestOrdenarTemas(t *testing.T) {
+	temas := []string{"a", "b", "c"}
+	casos := []struct {
+		ativo    string
+		esperado []string
+	}{
+		{"", []string{"a", "b", "c"}},
+		{"c", []string{"a", "b", "c"}},
+		{"a", []string{"b", "c", "a"}},
+		{"fora", []string{"a", "b", "c"}},
+	}
+	for _, c := range casos {
+		if obtido := OrdenarTemas(temas, c.ativo); !slices.Equal(obtido, c.esperado) {
+			t.Errorf("OrdenarTemas(%q) = %v, esperado %v", c.ativo, obtido, c.esperado)
+		}
+	}
+}
+
+func TestNomeTema(t *testing.T) {
+	casos := map[string]string{
+		"https://github.com/vinicgobbi/omarchy-lunar-quest-theme":    "lunar-quest",
+		"https://github.com/KitsuneSemCalda/omarchy-sword-art-theme": "sword-art",
+		"https://github.com/alguem/tema-qualquer.git":                "tema-qualquer",
+	}
+	for url, esperado := range casos {
+		if obtido := NomeTema(url); obtido != esperado {
+			t.Errorf("NomeTema(%q) = %q, esperado %q", url, obtido, esperado)
+		}
 	}
 }
 

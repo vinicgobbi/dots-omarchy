@@ -31,8 +31,13 @@ type Config struct {
 	Selecao     []bool // pré-seleção; nil marca tudo
 	PularMenu   bool   // a seleção veio de --modulos
 	Conta       *sistema.Conta
-	FalhaRapida bool   // --fail-fast
-	Trabalho    string // diretório temporário da execução
+	Notas       []string // efeitos do --pular, mostrados na revisão
+	FalhaRapida bool     // --fail-fast
+	Trabalho    string   // diretório temporário da execução
+	// TemaAtivo é a URL do tema escolhido; com TemaEscolhido (veio de --tema),
+	// não pergunta.
+	TemaAtivo     string
+	TemaEscolhido bool
 }
 
 // Resultado é o que aconteceu na sessão, para o main.
@@ -48,6 +53,7 @@ type tela int
 const (
 	telaUsuario tela = iota
 	telaOutroUsuario
+	telaTema
 	telaModulos
 	telaRevisao
 	telaExecucao
@@ -104,11 +110,14 @@ type modelo struct {
 	conta       sistema.Conta
 	contaDaFlag bool
 
+	// Tema
+	cursorTema int
+
 	// Módulos
 	sel    []bool
 	cursor int
 	nota   string
-	notas  []string // dependências puxadas do --modulos
+	notas  []string // dependências puxadas do --modulos e efeitos do --pular
 
 	// Execução
 	fila         []*modulos.Modulo
@@ -146,7 +155,7 @@ func novoModelo(cfg Config, b *ponte) modelo {
 			sel[i] = true
 		}
 	}
-	var notas []string
+	notas := append([]string(nil), cfg.Notas...)
 	for _, p := range modulos.Resolver(cfg.Modulos, sel) {
 		notas = append(notas, fmt.Sprintf("'%s' depende de '%s': selecionado automaticamente.",
 			cfg.Modulos[p.Por].Titulo, cfg.Modulos[p.Dep].Titulo))
@@ -163,6 +172,15 @@ func novoModelo(cfg Config, b *ponte) modelo {
 			m.cursorConta = i
 		}
 	}
+	if cfg.Dados != nil {
+		m.cursorTema = max(0, len(cfg.Dados.Themes)-1)
+		for i, url := range cfg.Dados.Themes {
+			if url == cfg.TemaAtivo {
+				m.cursorTema = i
+			}
+		}
+	}
+
 	if cfg.Conta != nil {
 		m.conta, m.contaDaFlag = *cfg.Conta, true
 		m.tela = m.telaAposUsuario()
@@ -179,7 +197,20 @@ func (m modelo) marcado(id string) bool {
 	return false
 }
 
+// perguntaTema diz se a tela de tema se aplica: há temas, o módulo está marcado
+// e a escolha não veio de --tema.
+func (m modelo) perguntaTema() bool {
+	return !m.cfg.TemaEscolhido && m.cfg.Dados != nil && len(m.cfg.Dados.Themes) > 0 && m.marcado("temas_omarchy")
+}
+
 func (m modelo) telaAposUsuario() tela {
+	if m.perguntaTema() {
+		return telaTema
+	}
+	return m.telaAposTema()
+}
+
+func (m modelo) telaAposTema() tela {
 	if m.cfg.PularMenu {
 		return telaRevisao
 	}
@@ -274,6 +305,8 @@ func (m modelo) tecla(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.teclaUsuario(k)
 	case telaOutroUsuario:
 		return m.teclaOutroUsuario(k)
+	case telaTema:
+		return m.teclaTema(k)
 	case telaModulos:
 		return m.teclaModulos(k)
 	case telaRevisao:
@@ -394,6 +427,40 @@ func (m modelo) teclaOutroUsuario(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
+// teclaTema: a última opção da lista é não instalar temas extras.
+func (m modelo) teclaTema(k tea.KeyMsg) (tea.Model, tea.Cmd) {
+	temas := m.cfg.Dados.Themes
+	switch k.String() {
+	case "up", "k":
+		m.cursorTema = max(0, m.cursorTema-1)
+	case "down", "j":
+		m.cursorTema = min(len(temas), m.cursorTema+1)
+	case "enter", " ":
+		m.sel = append([]bool(nil), m.sel...)
+		if m.cursorTema < len(temas) {
+			m.cfg.TemaAtivo = temas[m.cursorTema]
+			m.tela = m.telaAposTema()
+			break
+		}
+		// Sem tema, o módulo não teria o que fazer: desmarca.
+		m.cfg.TemaAtivo = ""
+		for i, mod := range m.cfg.Modulos {
+			if mod.ID == "temas_omarchy" {
+				modulos.Desmarcar(m.cfg.Modulos, m.sel, i)
+			}
+		}
+		m.tela = m.telaAposTema()
+	case "esc":
+		if !m.contaDaFlag {
+			m.tela = telaUsuario
+		}
+	case "q":
+		m.abortado = true
+		return m, tea.Quit
+	}
+	return m, nil
+}
+
 func (m modelo) teclaModulos(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 	lista := m.cfg.Modulos
 	switch k.String() {
@@ -429,7 +496,10 @@ func (m modelo) teclaModulos(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		m.nota, m.tela = "", telaRevisao
 	case "esc":
-		if !m.contaDaFlag {
+		switch {
+		case m.perguntaTema():
+			m.tela = telaTema
+		case !m.contaDaFlag:
 			m.tela = telaUsuario
 		}
 	case "q":
@@ -553,7 +623,7 @@ func (m modelo) iniciar() (tea.Model, tea.Cmd) {
 	}
 
 	s := sistema.Novo(ctx, m.cfg.Raiz, m.conta, m.cfg.Dados, m.cfg.DryRun, m.ponte, log)
-	s.Trabalho = m.cfg.Trabalho
+	s.Trabalho, s.TemaAtivo = m.cfg.Trabalho, m.cfg.TemaAtivo
 	go executar(ctx, s, m.fila, m.cfg.FalhaRapida, m.ponte)
 	return m, nil
 }

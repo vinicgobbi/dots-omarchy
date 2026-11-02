@@ -54,6 +54,8 @@ func (m modelo) View() string {
 func (m modelo) viewTela() string {
 	var corpo, rodape string
 	switch m.tela {
+	case telaTema:
+		corpo, rodape = m.viewTema(), ajuda("↑/↓", "mover", "enter", "escolher", "esc", "voltar", "q", "sair")
 	case telaUsuario:
 		corpo, rodape = m.viewUsuario(), ajuda("↑/↓", "mover", "enter", "escolher", "q", "sair")
 	case telaOutroUsuario:
@@ -96,7 +98,7 @@ func (m modelo) cabecalho() string {
 	topo := cortar(strings.Join(partes, "  "), m.largura)
 
 	etapas := []string{"Usuário", "Módulos", "Revisão", "Execução", "Resumo"}
-	atual := map[tela]int{telaUsuario: 0, telaOutroUsuario: 0, telaModulos: 1,
+	atual := map[tela]int{telaUsuario: 0, telaOutroUsuario: 0, telaTema: 1, telaModulos: 1,
 		telaRevisao: 2, telaExecucao: 3, telaResumo: 4}[m.tela]
 	var trilha []string
 	for i, e := range etapas {
@@ -170,6 +172,30 @@ func (m modelo) viewOutroUsuario() string {
 	if m.erroEntrada != "" {
 		b.WriteString("\n" + estiloErro.Render("✗ "+m.erroEntrada) + "\n")
 	}
+	return b.String()
+}
+
+// ------------------------------------------------------------------
+// Tema
+// ------------------------------------------------------------------
+
+func (m modelo) viewTema() string {
+	var b strings.Builder
+	b.WriteString(estiloNegrito.Render("Qual tema extra deve ficar ativo?") + "\n")
+	b.WriteString(estiloSutil.Render("Todos os temas da lista são instalados; dá para trocar depois no seletor do Omarchy.") + "\n\n")
+
+	opcao := func(i int, nome, detalhe string) {
+		if i == m.cursorTema {
+			b.WriteString(estiloDestaque.Render("› "+fmt.Sprintf("%-16s", nome)) + "  " + estiloSutil.Render(detalhe) + "\n")
+		} else {
+			b.WriteString("  " + fmt.Sprintf("%-16s", nome) + "  " + estiloSutil.Render(detalhe) + "\n")
+		}
+	}
+	temas := m.cfg.Dados.Themes
+	for i, url := range temas {
+		opcao(i, modulos.NomeTema(url), url)
+	}
+	opcao(len(temas), "Não instalar", "mantém o tema atual e desmarca o módulo de temas")
 	return b.String()
 }
 
@@ -371,6 +397,10 @@ func (m modelo) viewRevisao() string {
 	campo("Usuário-alvo", estiloNegrito.Render(m.conta.Nome)+estiloSutil.Render("  "+m.conta.Home))
 	campo("Modo", modo)
 	campo("Log", m.relativo(m.cfg.Log.Caminho))
+	if temas := m.cfg.Dados.Themes; m.marcado("temas_omarchy") && len(temas) > 0 {
+		ordenados := modulos.OrdenarTemas(temas, m.cfg.TemaAtivo)
+		campo("Tema ativo", modulos.NomeTema(ordenados[len(ordenados)-1]))
+	}
 	b.WriteString("\n")
 
 	var itens []string

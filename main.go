@@ -30,8 +30,11 @@ var versao = "dev"
 type opcoes struct {
 	dryRun   bool
 	modulos  string
+	pular    string
 	usuario  string
+	tema     string
 	semTUI   bool
+	sim      bool
 	failFast bool
 	listar   bool
 	versao   bool
@@ -42,8 +45,11 @@ func argumentos() opcoes {
 	var o opcoes
 	flag.BoolVar(&o.dryRun, "dry-run", false, "mostra os comandos e arquivos que seriam alterados, sem executar")
 	flag.StringVar(&o.modulos, "modulos", "", "roda só estes módulos (ids separados por vírgula) e as dependências, sem o menu")
+	flag.StringVar(&o.pular, "pular", "", "desmarca estes módulos (ids separados por vírgula) e os que dependem deles")
 	flag.StringVar(&o.usuario, "usuario", "", "usuário-alvo (sem perguntar)")
+	flag.StringVar(&o.tema, "tema", "", "tema que fica ativo (nome ou URL de data/themes.json), ou \"none\" para não instalar temas (padrão: perguntar)")
 	flag.BoolVar(&o.semTUI, "sem-tui", false, "usa a saída em texto corrido em vez da interface interativa")
+	flag.BoolVar(&o.sim, "yes", false, "não pede confirmação para começar, no modo texto (plugins e temas de terceiros ainda perguntam)")
 	flag.BoolVar(&o.failFast, "fail-fast", false, "para tudo no primeiro módulo que falhar")
 	flag.BoolVar(&o.listar, "listar", false, "lista os módulos e seus ids e sai")
 	flag.BoolVar(&o.versao, "versao", false, "mostra a versão e sai")
@@ -115,6 +121,59 @@ func detectarSistema() (string, error) {
 
 func terminal(f *os.File) bool { return term.IsTerminal(f.Fd()) }
 
+// dividir separa uma lista de ids ou nomes por vírgula.
+func dividir(lista string) []string {
+	var itens []string
+	for _, item := range strings.Split(lista, ",") {
+		if item = strings.TrimSpace(item); item != "" {
+			itens = append(itens, item)
+		}
+	}
+	return itens
+}
+
+// selecaoInicial aplica --modulos e --pular; nil (sem nenhuma das duas) marca
+// tudo. Devolve também o que saiu junto com o --pular.
+func selecaoInicial(lista []*modulos.Modulo, ids, pular string) ([]bool, []string, error) {
+	var selecao []bool
+	if ids != "" {
+		s, err := modulos.Selecionar(lista, dividir(ids))
+		if err != nil {
+			return nil, nil, err
+		}
+		selecao = s
+	}
+	if pular == "" {
+		return selecao, nil, nil
+	}
+	if selecao == nil {
+		selecao = make([]bool, len(lista))
+		for i := range selecao {
+			selecao[i] = true
+		}
+	}
+	notas, err := modulos.Pular(lista, selecao, dividir(pular))
+	return selecao, notas, err
+}
+
+// resolverTema converte o valor de --tema na URL do tema. Com "none", também
+// desmarca o módulo de temas. Devolve escolhido=false quando a flag não veio (é
+// preciso perguntar).
+func resolverTema(temas []string, valor string) (url string, escolhido bool, err error) {
+	switch valor {
+	case "":
+		return "", false, nil
+	case "none":
+		return "", true, nil
+	}
+	for _, t := range temas {
+		if t == valor || modulos.NomeTema(t) == valor {
+			return t, true, nil
+		}
+	}
+	return "", false, fmt.Errorf("tema %q não encontrado em data/themes.json", valor)
+}
+
 func rodar() int {
 	o := argumentos()
 	lista := modulos.Todos()
@@ -180,11 +239,17 @@ func rodar() int {
 		return falhar("Dados inválidos: " + err.Error())
 	}
 
-	var selecao []bool
-	if o.modulos != "" {
-		if selecao, err = modulos.Selecionar(lista, strings.Split(o.modulos, ",")); err != nil {
-			return falhar(err.Error() + " (veja --listar)")
-		}
+	temaAtivo, temaEscolhido, err := resolverTema(d.Themes, o.tema)
+	if err != nil {
+		return falhar(err.Error())
+	}
+	pular := o.pular
+	if o.tema == "none" {
+		pular = strings.Join(append(dividir(pular), "temas_omarchy"), ",")
+	}
+	selecao, notas, err := selecaoInicial(lista, o.modulos, pular)
+	if err != nil {
+		return falhar(err.Error() + " (veja --listar)")
 	}
 
 	var conta *sistema.Conta
@@ -206,12 +271,12 @@ func rodar() int {
 	if terminal(os.Stdin) && terminal(os.Stdout) && !o.semTUI {
 		cfg := tui.Config{
 			Versao: versao, Raiz: raiz, Dados: d, DryRun: o.dryRun, Log: log, NomeSistema: nomeSistema,
-			Modulos: lista, Selecao: selecao, PularMenu: selecao != nil, Conta: conta,
-			FalhaRapida: o.failFast, Trabalho: trabalho,
+			Modulos: lista, Selecao: selecao, PularMenu: o.modulos != "", Conta: conta, Notas: notas,
+			FalhaRapida: o.failFast, Trabalho: trabalho, TemaAtivo: temaAtivo, TemaEscolhido: temaEscolhido,
 		}
 		return rodarTUI(cfg)
 	}
-	return rodarTexto(o, raiz, nomeSistema, d, lista, selecao, conta, log, trabalho)
+	return rodarTexto(o, raiz, nomeSistema, d, lista, selecao, notas, conta, log, trabalho, temaAtivo, temaEscolhido)
 }
 
 // codigoSaida: 130 se algo foi cancelado, 1 se algo falhou.
@@ -243,10 +308,30 @@ func rodarTUI(cfg tui.Config) int {
 	return codigoSaida(r.Modulos)
 }
 
+// perguntarTema pergunta (modo texto) qual tema fica ativo.
+func perguntarTema(t *ui.Texto, temas []string) string {
+	t.Info("Temas extras (o escolhido fica ativo):")
+	for i, url := range temas {
+		fmt.Printf("  %d) %s\n", i+1, modulos.NomeTema(url))
+	}
+	for {
+		resposta, err := t.Pergunta(fmt.Sprintf("Número [%d]: ", len(temas)))
+		if err != nil || resposta == "" {
+			return temas[len(temas)-1]
+		}
+		var n int
+		if _, err := fmt.Sscanf(resposta, "%d", &n); err == nil && n >= 1 && n <= len(temas) {
+			return temas[n-1]
+		}
+		t.Aviso("Opção inválida.")
+	}
+}
+
 // rodarTexto é o fluxo sem TUI: sem terminal interativo (ou com --sem-tui),
 // roda todos os módulos ou os de --modulos.
 func rodarTexto(o opcoes, raiz, nomeSistema string, d *dados.Dados, lista []*modulos.Modulo,
-	selecao []bool, conta *sistema.Conta, log *logs.Log, trabalho string) int {
+	selecao []bool, notas []string, conta *sistema.Conta, log *logs.Log,
+	trabalho, temaAtivo string, temaEscolhido bool) int {
 	interativo := terminal(os.Stdin)
 	t := ui.NovoTexto(log, interativo)
 	t.Banner()
@@ -288,6 +373,9 @@ func rodarTexto(o opcoes, raiz, nomeSistema string, d *dados.Dados, lista []*mod
 			selecao[i] = true
 		}
 	}
+	for _, nota := range notas {
+		t.Aviso(nota)
+	}
 	for _, p := range modulos.Resolver(lista, selecao) {
 		t.Aviso(fmt.Sprintf("'%s' depende de '%s': selecionando automaticamente.", lista[p.Por].Titulo, lista[p.Dep].Titulo))
 	}
@@ -295,6 +383,9 @@ func rodarTexto(o opcoes, raiz, nomeSistema string, d *dados.Dados, lista []*mod
 	for i, m := range lista {
 		if selecao[i] {
 			escolhidos = append(escolhidos, m)
+			if m.ID == "temas_omarchy" && interativo && !o.sim && !temaEscolhido && len(d.Themes) > 1 {
+				temaAtivo = perguntarTema(t, d.Themes)
+			}
 		}
 	}
 	if len(escolhidos) == 0 {
@@ -308,7 +399,7 @@ func rodarTexto(o opcoes, raiz, nomeSistema string, d *dados.Dados, lista []*mod
 		fmt.Printf("  - %s\n", m.Titulo)
 	}
 	fmt.Println()
-	if interativo && !t.SimNao(fmt.Sprintf("Iniciar a configuração com os %d módulos acima?", len(escolhidos))) {
+	if interativo && !o.sim && !t.SimNao(fmt.Sprintf("Iniciar a configuração com os %d módulos acima?", len(escolhidos))) {
 		t.Aviso("Operação cancelada pelo usuário.")
 		return 0
 	}
@@ -325,7 +416,7 @@ func rodarTexto(o opcoes, raiz, nomeSistema string, d *dados.Dados, lista []*mod
 	ctx, parar := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer parar()
 	s := sistema.Novo(ctx, raiz, *conta, d, o.dryRun, t, log)
-	s.Trabalho = trabalho
+	s.Trabalho, s.TemaAtivo = trabalho, temaAtivo
 	restaurar, err := s.LiberarSudo()
 	if err != nil {
 		t.Erro(err.Error())
