@@ -2,8 +2,10 @@ name: release
 
 # Só a main gera versão: o commitizen decide o bump pelos commits
 # convencionais, o binário é compilado na tag nova e publicado no release
-# (binário solto + zip com a estrutura de pastas). O artefato da action é só a
-# ponte entre os jobs e é apagado no fim; fica apenas o release.
+# (binário solto + zip com a estrutura de pastas, cada um com .sha256 e atestado
+# de proveniência). O artefato da action é só a ponte entre os jobs e é apagado
+# no fim; fica apenas o release. Actions fixadas pelo SHA do commit; o Dependabot
+# propõe as atualizações.
 on:
   push:
     branches: [main]
@@ -34,6 +36,14 @@ jobs:
           go vet ./...
           go test ./...
           go build -o /dev/null .
+
+      - name: Análise estática e vulnerabilidades
+        run: |
+          go run honnef.co/go/tools/cmd/staticcheck@v0.8.2 ./...
+          go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
+
+      - name: Shellcheck
+        run: shellcheck setup.sh scripts/*.sh
 
   versao:
     name: Versão (commitizen)
@@ -85,6 +95,10 @@ jobs:
     needs: versao
     if: needs.versao.outputs.lancar == 'true'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # assinatura Sigstore do atestado
+      attestations: write
     outputs:
       artefato: ${{ steps.upload.outputs.artifact-id }}
     env:
@@ -116,7 +130,16 @@ jobs:
           chmod +x "dist/$pasta/post-omarchy" "dist/$pasta/setup.sh"
           (cd dist && zip -qr "$pasta-linux-amd64.zip" "$pasta" && rm -rf "$pasta")
           cp post-omarchy "dist/post-omarchy-linux-amd64"
+          (cd dist && sha256sum "post-omarchy-linux-amd64" > "post-omarchy-linux-amd64.sha256" \
+            && sha256sum "$pasta-linux-amd64.zip" > "$pasta-linux-amd64.zip.sha256")
           ls -la dist
+
+      - name: Atestado de proveniência
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: |
+            dist/post-omarchy-linux-amd64
+            dist/post-omarchy-*-linux-amd64.zip
 
       - name: Enviar artefato
         id: upload

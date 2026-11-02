@@ -1,0 +1,12 @@
+# Propõe PRs atualizando as actions (fixadas por SHA nos workflows) e os módulos
+# Go.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+  - package-ecosystem: gomod
+    directory: /
+    schedule:
+      interval: weekly
