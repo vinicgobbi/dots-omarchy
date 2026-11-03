@@ -27,6 +27,17 @@ func TestJuntar(t *testing.T) {
 	}
 }
 
+// Sem o verifypw=any, o `sudo -v` dos scripts do Omarchy ainda pede senha, porque
+// o usuário também tem a entrada do wheel sem NOPASSWD.
+func TestRegraSudoCobreValidacao(t *testing.T) {
+	regra := regraSudo("fulano")
+	for _, trecho := range []string{"Defaults:fulano verifypw=any\n", "fulano ALL=(ALL) NOPASSWD: ALL\n"} {
+		if !strings.Contains(regra, trecho) {
+			t.Errorf("regra sem %q:\n%s", trecho, regra)
+		}
+	}
+}
+
 func TestEspelharDevolveStdoutEStderr(t *testing.T) {
 	s := Novo(context.Background(), t.TempDir(), Conta{}, nil, false, ui.NovoTexto(nil, false), nil)
 	res, err := s.Rodar([]string{"bash", "-c", "echo saida; echo 'plugin id x is already used by y' >&2; exit 1"},

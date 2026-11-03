@@ -41,8 +41,8 @@ Recusa rodar em qualquer sistema que não tenha `ID=omarchy`.
 `omarchy-install-browser`…) e o `yay` chamam `sudo` sozinhos e, rodando como o
 usuário-alvo via `su -c`, não têm terminal para pedir a senha. Por isso, só
 durante a execução, o setup cria `/etc/sudoers.d/99-post-omarchy` com
-`NOPASSWD: ALL` para o usuário-alvo (que já autenticou no `sudo ./setup.sh`).
-A regra é removida ao fim, em falha, em abort, em SIGTERM/SIGHUP e, se uma
+`NOPASSWD: ALL` e `verifypw=any` (para o `sudo -v` também não pedir senha) para o
+usuário-alvo (que já autenticou no `sudo ./setup.sh`). A regra é removida ao fim, em falha, em abort, em SIGTERM/SIGHUP e, se uma
 execução anterior tiver sido morta com SIGKILL, no início da próxima. Enquanto
 ela existe, qualquer script rodando como esse usuário tem sudo sem senha,
 inclusive os de terceiros (Dotfiles, rustup, plugins). Cada execução
