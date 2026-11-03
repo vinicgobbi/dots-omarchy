@@ -1,3 +1,10 @@
+## v0.4.1 (2026-11-03)
+
+### Fix
+
+- **modulos**: impede que o omarchy-update trave em prompts
+- **sistema**: evita pedido de senha no sudo -v durante o setup
+
 ## v0.4.0 (2026-11-02)
 
 ### BREAKING CHANGE
