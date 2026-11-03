@@ -20,14 +20,24 @@ const SudoersTemporario = "/etc/sudoers.d/99-post-omarchy"
 // sudoersLegado é a regra antiga, só do pacman (versões anteriores do setup).
 const sudoersLegado = "/etc/sudoers.d/99-post-omarchy-aur"
 
+// regraSudo é o conteúdo da regra temporária. O NOPASSWD sozinho não cobre o
+// `sudo -v`, usado pelo omarchy-update-stay-awake e pelo omarchy-sudo-keepalive:
+// no padrão (verifypw=all), ele só dispensa a senha se TODAS as entradas do
+// usuário tiverem NOPASSWD, e o grupo wheel tem uma sem. O verifypw=any basta
+// com esta entrada.
+func regraSudo(usuario string) string {
+	return fmt.Sprintf("# Temporário: criado e removido pelo post-omarchy.\n"+
+		"Defaults:%[1]s verifypw=any\n"+
+		"%[1]s ALL=(ALL) NOPASSWD: ALL\n", usuario)
+}
+
 // LiberarSudo cria a regra temporária e devolve a função que a remove.
 func (s *Sistema) LiberarSudo() (func(), error) {
 	if s.DryRun {
 		s.UI.DryRun(fmt.Sprintf("escrever %s (sudo sem senha para %s durante o setup)", SudoersTemporario, s.Usuario()))
 		return func() { s.UI.DryRun("rm -f " + SudoersTemporario) }, nil
 	}
-	conteudo := fmt.Sprintf("# Temporário: criado e removido pelo post-omarchy.\n%s ALL=(ALL) NOPASSWD: ALL\n", s.Usuario())
-	if err := os.WriteFile(SudoersTemporario, []byte(conteudo), 0o440); err != nil {
+	if err := os.WriteFile(SudoersTemporario, []byte(regraSudo(s.Usuario())), 0o440); err != nil {
 		return nil, err
 	}
 	if err := os.Chmod(SudoersTemporario, 0o440); err != nil {
